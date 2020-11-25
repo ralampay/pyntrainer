@@ -20,6 +20,7 @@ parser.add_argument("--loss", help='Loss function', type=str, default="mse")
 parser.add_argument("--lr", help='Learning rate', type=float, default=0.001)
 parser.add_argument("--epochs", help='Number of epochs', type=int, default=100)
 parser.add_argument("--batch-size", help='Batch size', type=int, default=5)
+parser.add_argument("--cont", help='Continue training from model file', type=bool, default=False)
 
 args = parser.parse_args()
 
@@ -33,28 +34,33 @@ if __name__ == '__main__':
     lr          = args.lr
     epochs      = args.epochs
     batch_size  = args.batch_size
-
-    data = pd.DataFrame()
-
-    for chunk in pd.read_csv(input_file, header=None, chunksize=chunk_size):
-        print("Reading chunk:")
-        print(chunk)
-        data = data.append(chunk)
-
-    tensor_data = torch.tensor(data.values).float()
-
-    input_dimensionality = len(data.columns)
-    print("Input Dimensionality: %d" % (input_dimensionality))
+    cont        = args.cont
 
     print("Initializing autoencoder...")
     net = Autoencoder(layers=layers)
     print(net)
 
-    print(net.forward(tensor_data))
-
     if mode == "train":
+        data = pd.DataFrame()
+
+        for chunk in pd.read_csv(input_file, header=None, chunksize=chunk_size):
+            print("Reading chunk:")
+            print(chunk)
+            data = data.append(chunk)
+
+        tensor_data = torch.tensor(data.values).float()
+
+        input_dimensionality = len(data.columns)
+        print("Input Dimensionality: %d" % (input_dimensionality))
+
+        if cont:
+            net.load(model_file)
+
         print("Training...")
         net.train(tensor_data, epochs=epochs, lr=lr, batch_size=batch_size, loss=loss)
         net.save(model_file)
+
     elif mode == "predict":
-        pass
+        print("Loading model...")
+        net.load(model_file)
+        print(net)

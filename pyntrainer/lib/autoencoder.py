@@ -52,6 +52,14 @@ class Autoencoder(nn.Module):
 
         torch.save(state, filename)
 
+    def load(self, filename):
+        state = torch.load(filename)
+        
+        self.load_state_dict(state['state_dict'])
+
+        self.optimizer  = state['optimizer']
+        self.loss       = state['loss']
+
     def train(self, x, epochs=100, lr=0.005, batch_size=5, loss="mse"):
         self.loss = loss
 
@@ -83,4 +91,4 @@ class Autoencoder(nn.Module):
                 self.optimizer.step()
 
             curr_loss = curr_loss / num_iterations
-            print("Epoch: %i\tLoss: %0.5f" % (epoch, curr_loss.item()))
+            print("=> Epoch: %i\tLoss: %0.5f" % (epoch + 1, curr_loss.item()))
