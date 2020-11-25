@@ -83,4 +83,4 @@ class Autoencoder(nn.Module):
                 self.optimizer.step()
 
             curr_loss = curr_loss / num_iterations
-            print(curr_loss.item())
+            print("Epoch: %i\tLoss: %0.5f" % (epoch, curr_loss.item()))

@@ -11,3 +11,6 @@ publications/**/*.aux
 publications/**/*.log
 
 logs/
+
+*.tar
+*.pth
