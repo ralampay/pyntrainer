@@ -14,3 +14,5 @@ logs/
 
 *.tar
 *.pth
+
+data/*.csv
