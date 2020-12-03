@@ -13,10 +13,10 @@ from lib.utils import performance_metrics
 
 parser = argparse.ArgumentParser(description="PynTrainer: Stochastic Autoencoder trainer program")
 
-parser.add_argument("--mode", help="Mode to be used", choices=["train", "eval"], type=str, default="train")
+parser.add_argument("--mode", help="Mode to be used", choices=["train", "eval"], type=str, default="eval")
 parser.add_argument("--input-file", help="Input csv file for training")
 parser.add_argument("--model-file", help="Output model file", type=str, const=1, nargs='?', default="output.pth.tar")
-parser.add_argument("--chunk-size", help="Chunk size for reading large files", type=int, const=1, nargs='?', default=100)
+parser.add_argument("--chunk-size", help="Chunk size for reading large files", type=int, const=1, nargs='?', default=5000)
 parser.add_argument("--layers", help='Layers for autoencoder', type=int, nargs='+')
 parser.add_argument("--loss", help='Loss function', type=str, default="mse")
 parser.add_argument("--lr", help='Learning rate', type=float, default=0.005)
@@ -57,7 +57,7 @@ if __name__ == '__main__':
         positive_data = data[data[len(data.columns) - 1] == 1].iloc[:,:len(data.columns) - 1]
         negative_data = data[data[len(data.columns) - 1] == 0].iloc[:,:len(data.columns) - 1]
 
-        training_data            = positive_data.sample(frac=0.50)
+        training_data            = positive_data.sample(frac=0.60)
         positive_validation_data = positive_data.drop(training_data.index)
         negative_validation_data = negative_data.copy()
 
@@ -116,12 +116,19 @@ if __name__ == '__main__':
         ## EVALUATE RESULTS ##
         print(tabulate(evaluation_results, ["ALGO", "TP", "TN", "FP", "FN", "TPR", "TNR", "PPV", "NPV", "TS", "PT", "ACC", "F1", "MCC"], tablefmt="grid"))
 
-        print("Positive Data Points: %d" % (len(positive_data)))
-        print("Negative Data Points: %d" % (len(negative_data)))
-        print("Training Data Points: %d" % (len(training_data)))
-        print("Validation Normal Data Points: %d" % (len(positive_validation_data)))
-        print("Validation Outlier Data Points: %d" % (len(negative_validation_data)))
-        print("Percentage of Anomalies Present: %0.4f" % (len(negative_validation_data) / (len(positive_validation_data) + len(negative_validation_data))))
+        len_training_data_points = len(training_data)
+        len_positive_validations = len(positive_validation_data)
+        len_negative_validations = len(negative_validation_data)
+        len_validations          = len_positive_validations + len_negative_validations
+
+        metrics_results = [
+            ["Training Data Points", len_training_data_points],
+            ["# Normal Points", len_positive_validations],
+            ["# Anomalies", len_negative_validations],
+            ["Contamination Percentage", int((len_negative_validations / len_validations) * 100)]
+        ]
+
+        print(tabulate(metrics_results, ["METRIC", "VALUE"], tablefmt="grid"))
     elif mode == "train":
         print("Initializing autoencoder...")
         net = Autoencoder(layers=layers)
