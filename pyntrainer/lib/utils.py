@@ -1,4 +1,27 @@
 import numpy as np
+from sklearn.metrics import confusion_matrix
+from math import sqrt
+
+def performance_metrics(validation_labels, predictions):
+    tn, fp, fn, tp = confusion_matrix(validation_labels, predictions).ravel()
+
+    tpr = tp / (tp + fn)
+    tnr = tn / (tn + fp)
+    ppv = tp / (tp + fp)
+    npv = tn / (tn + fn)
+    ts  = tp / (tp + fn + fp)
+    pt  = (sqrt(tpr * (-tnr + 1)) + tnr - 1) / (tpr + tnr - 1)
+    f1  = tp / (tp + 0.5 * (fp + fn))
+    acc = (tp + tn) / (tp + tn + fp + fn)
+
+    mcc_denominator = sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
+
+    if mcc_denominator > 0:
+        mcc = ((tp * tn) - (fp * fn))  / mcc_denominator
+    else:   
+        mcc = -1
+
+    return tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc
 
 def htb(data):
     outp = []
