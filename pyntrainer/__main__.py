@@ -116,6 +116,7 @@ if __name__ == '__main__':
         ## EVALUATE RESULTS ##
         print(tabulate(evaluation_results, ["ALGO", "TP", "TN", "FP", "FN", "TPR", "TNR", "PPV", "NPV", "TS", "PT", "ACC", "F1", "MCC"], tablefmt="grid"))
 
+        ## DATASET METRICS ##
         len_training_data_points = len(training_data)
         len_positive_validations = len(positive_validation_data)
         len_negative_validations = len(negative_validation_data)
