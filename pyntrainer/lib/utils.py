@@ -5,11 +5,6 @@ from math import sqrt
 def performance_metrics(validation_labels, predictions):
     tn, fp, fn, tp = np.array(confusion_matrix(validation_labels, predictions).ravel(), dtype=np.float64)
 
-    print("tn: %d" % (tn))
-    print("fp: %d" % (fp))
-    print("fn: %d" % (fn))
-    print("tp: %d" % (tp))
-
     tpr = tp / (tp + fn)
     tnr = tn / (tn + fp)
     ppv = tp / (tp + fp)
