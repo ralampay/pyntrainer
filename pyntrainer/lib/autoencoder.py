@@ -18,8 +18,10 @@ from utils import htb
 from utils import fetch_threshold
 
 class Autoencoder(nn.Module):
-    def __init__(self, layers=[]):
+    def __init__(self, layers=[], device=torch.device("cpu")):
         super().__init__()
+
+        self.device = device
 
         self.encoding_layers = nn.ModuleList([])
         self.decoding_layers = nn.ModuleList([])
@@ -136,7 +138,7 @@ class Autoencoder(nn.Module):
         self.loss = loss
 
         # Get the mean vector
-        self.mu_tensor = torch.tensor(x.numpy()[0].mean(axis=0))
+        self.mu_tensor = torch.tensor(x.numpy()[0].mean(axis=0)).to(self.device)
 
         data = AbstractDataset(x)
         dataloader = DataLoader(dataset=data, batch_size=batch_size, shuffle=True, num_workers=2)
@@ -151,7 +153,7 @@ class Autoencoder(nn.Module):
                 self.optimizer.zero_grad()
                 output = self.forward(inputs)
 
-                temp_mu_tensor = torch.tensor(inputs.numpy()[0].mean(axis=0))
+                temp_mu_tensor = torch.tensor(inputs.numpy()[0].mean(axis=0)).to(self.device)
 
                 if self.loss == "mse":
                     loss = (output - labels).pow(2).sum().mean()

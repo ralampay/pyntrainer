@@ -46,6 +46,14 @@ if __name__ == '__main__':
     cont        = args.cont
     eval_file   = args.eval_file
 
+    if torch.cuda.is_available():
+        dev = "cuda:0"
+        print("CUDA is available...")
+    else:
+        dev = "cpu"
+
+    device = torch.device(dev)
+
     if mode == "eval":
         evaluation_results = []
 
@@ -78,17 +86,17 @@ if __name__ == '__main__':
         validation_labels = validation_data_with_labels.iloc[:,-1:].values
 
         # Convert to tensor
-        positive_data   = torch.tensor(data[data[len(data.columns) - 1] == 1].iloc[:,:len(data.columns) - 1].values).float()
-        negative_data   = torch.tensor(data[data[len(data.columns) - 1] == -1].iloc[:,:len(data.columns) - 1].values).float()
-        training_data   = torch.tensor(training_data.values).float()
-        validation_data = torch.tensor(validation_data.values).float()
+        positive_data   = torch.tensor(data[data[len(data.columns) - 1] == 1].iloc[:,:len(data.columns) - 1].values).float().to(device)
+        negative_data   = torch.tensor(data[data[len(data.columns) - 1] == -1].iloc[:,:len(data.columns) - 1].values).float().to(device)
+        training_data   = torch.tensor(training_data.values).float().to(device)
+        validation_data = torch.tensor(validation_data.values).float().to(device)
 
         print("Validation Data:")
         print(validation_data)
 
         ## AML TRAINING ##
         print("Initializing autoencoder for AML loss...")
-        net = Autoencoder(layers=layers)
+        net = Autoencoder(layers=layers, device=device)
         print(net)
 
         print("Training w/ AML loss...")
@@ -105,7 +113,7 @@ if __name__ == '__main__':
 
         ## MSE TRAINING ##
         print("Initializing autoencoder for MSE loss...")
-        net = Autoencoder(layers=layers)
+        net = Autoencoder(layers=layers, device=device)
         print(net)
 
         print("Training w/ MSE loss...")
