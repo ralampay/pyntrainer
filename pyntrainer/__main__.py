@@ -57,7 +57,7 @@ if __name__ == '__main__':
         positive_data = data[data[len(data.columns) - 1] == 1].iloc[:,:len(data.columns) - 1]
         negative_data = data[data[len(data.columns) - 1] == 0].iloc[:,:len(data.columns) - 1]
 
-        training_data            = positive_data.sample(frac=0.20)
+        training_data            = positive_data.sample(frac=0.25)
         positive_validation_data = positive_data.drop(training_data.index)
         negative_validation_data = negative_data.copy()
 
