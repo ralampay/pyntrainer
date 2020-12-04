@@ -77,13 +77,10 @@ class Autoencoder(nn.Module):
     def errors(self, x):
         x_hat = self.forward(x)
 
-#        if self.loss == "mse":
-#            err = (x_hat - x).pow(2).sum(dim=1)
-#        elif self.loss == "aml":
-#            err = (x_hat - x).pow(2).sum(dim=1) + (x_hat - self.mu_tensor).pow(2).sum(dim=1)
-#        else:
-
-        err = (x_hat - x).pow(2).sum(dim=1)
+        if self.loss == "mse":
+            err = (x_hat - x).pow(2).sum(dim=1)
+        elif self.loss == "aml":
+            err = (x_hat - x).pow(2).sum(dim=1) + (x_hat - self.mu_tensor).pow(2).sum(dim=1)
 
         return err.detach().cpu().numpy()
 
@@ -142,7 +139,7 @@ class Autoencoder(nn.Module):
         self.mu_tensor = torch.tensor(x.cpu().numpy()[0].mean(axis=0)).to(self.device)
 
         data = AbstractDataset(x)
-        dataloader = DataLoader(dataset=data, batch_size=batch_size, shuffle=True, num_workers=0)
+        dataloader = DataLoader(dataset=data, batch_size=batch_size, shuffle=True, num_workers=4)
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
 

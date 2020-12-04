@@ -97,9 +97,7 @@ if __name__ == '__main__':
         ## AML TRAINING ##
         print("Initializing autoencoder for AML loss...")
         net = Autoencoder(layers=layers, device=device)
-
-        if torch.cuda.is_available():
-            net.cuda()
+        net.to(device)
 
         print(net)
 
@@ -118,9 +116,7 @@ if __name__ == '__main__':
         ## MSE TRAINING ##
         print("Initializing autoencoder for MSE loss...")
         net = Autoencoder(layers=layers, device=device)
-
-        if torch.cuda.is_available():
-            net.cuda()
+        net.to(device)
 
         print(net)
 
