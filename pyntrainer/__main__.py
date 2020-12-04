@@ -11,7 +11,9 @@ from tabulate import tabulate
 from lib.autoencoder import Autoencoder
 from lib.utils import performance_metrics
 
+# Existing implementations of anomaly detectors
 from sklearn import svm
+from sklearn.ensemble import IsolationForest
 
 parser = argparse.ArgumentParser(description="PynTrainer: Stochastic Autoencoder trainer program")
 
@@ -127,6 +129,20 @@ if __name__ == '__main__':
 
         evaluation_results.append(
             ["OC-SVM", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+        )
+
+        ## ISOLATION FOREST TRAINING ##
+        print("Training Isolation Forest...")
+        clf = IsolationForest(random_state=0)
+        clf.fit(validation_data)
+
+        predictions = clf.predict(validation_data)
+        predictions[predictions == -1] = 0
+
+        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+
+        evaluation_results.append(
+            ["ISO-F", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
         )
 
         ## EVALUATE RESULTS ##
