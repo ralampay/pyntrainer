@@ -14,6 +14,8 @@ from lib.utils import performance_metrics
 # Existing implementations of anomaly detectors
 from sklearn import svm
 from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
+from sklearn.covariance import EllipticEnvelope
 
 parser = argparse.ArgumentParser(description="PynTrainer: Stochastic Autoencoder trainer program")
 
@@ -61,7 +63,7 @@ if __name__ == '__main__':
         positive_data = data[data[len(data.columns) - 1] == 1].iloc[:,:len(data.columns) - 1]
         negative_data = data[data[len(data.columns) - 1] == 0].iloc[:,:len(data.columns) - 1]
 
-        training_data            = positive_data.sample(frac=0.25)
+        training_data            = positive_data.sample(frac=0.40)
         positive_validation_data = positive_data.drop(training_data.index)
         negative_validation_data = negative_data.copy()
 
@@ -143,6 +145,34 @@ if __name__ == '__main__':
 
         evaluation_results.append(
             ["ISO-F", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+        )
+
+        ## LOCAL OUTLIER FACTOR ##
+        print("Training Local Outlier Factor...")
+        clf = LocalOutlierFactor(novelty=True)
+        clf.fit(validation_data)
+
+        predictions = clf.predict(validation_data)
+        predictions[predictions == -1] = 0
+
+        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+
+        evaluation_results.append(
+            ["LOC-OF", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+        )
+
+        ## ROBUST COVARIANCE ##
+        print("Training Robust Covariance...")
+        clf = EllipticEnvelope()
+        clf.fit(validation_data)
+
+        predictions = clf.predict(validation_data)
+        predictions[predictions == -1] = 0
+
+        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+
+        evaluation_results.append(
+            ["ROB-COV", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
         )
 
         ## EVALUATE RESULTS ##
