@@ -11,6 +11,8 @@ from tabulate import tabulate
 from lib.autoencoder import Autoencoder
 from lib.utils import performance_metrics
 
+from sklearn import svm
+
 parser = argparse.ArgumentParser(description="PynTrainer: Stochastic Autoencoder trainer program")
 
 parser.add_argument("--mode", help="Mode to be used", choices=["train", "eval"], type=str, default="eval")
@@ -111,6 +113,20 @@ if __name__ == '__main__':
 
         evaluation_results.append(
             ["AE-MSE", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+        )
+
+        ## ONE CLASS SVM TRAINING ##
+        print("Training OneClassSVM...")
+        clf = svm.OneClassSVM(gamma="auto")
+        clf.fit(validation_data)
+
+        predictions = clf.predict(validation_data)
+        predictions[predictions == -1] = 0
+
+        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+
+        evaluation_results.append(
+            ["OC-SVM", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
         )
 
         ## EVALUATE RESULTS ##
