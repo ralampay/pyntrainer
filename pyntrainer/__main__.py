@@ -61,7 +61,7 @@ if __name__ == '__main__':
         print("Input Dimensionality: %d" % (input_dimensionality))
 
         positive_data = data[data[len(data.columns) - 1] == 1].iloc[:,:len(data.columns) - 1]
-        negative_data = data[data[len(data.columns) - 1] == 0].iloc[:,:len(data.columns) - 1]
+        negative_data = data[data[len(data.columns) - 1] == -1].iloc[:,:len(data.columns) - 1]
 
         training_data            = positive_data.sample(frac=0.40)
         positive_validation_data = positive_data.drop(training_data.index)
@@ -71,7 +71,7 @@ if __name__ == '__main__':
         temp_positive[input_dimensionality] = 1
 
         temp_negative = negative_data.copy()
-        temp_negative[input_dimensionality] = 0
+        temp_negative[input_dimensionality] = -1
 
         validation_data_with_labels = pd.concat([temp_positive, temp_negative], ignore_index=True)
         validation_data   = validation_data_with_labels.iloc[:,:len(data.columns) - 1]
@@ -79,7 +79,7 @@ if __name__ == '__main__':
 
         # Convert to tensor
         positive_data   = torch.tensor(data[data[len(data.columns) - 1] == 1].iloc[:,:len(data.columns) - 1].values).float()
-        negative_data   = torch.tensor(data[data[len(data.columns) - 1] == 0].iloc[:,:len(data.columns) - 1].values).float()
+        negative_data   = torch.tensor(data[data[len(data.columns) - 1] == -1].iloc[:,:len(data.columns) - 1].values).float()
         training_data   = torch.tensor(training_data.values).float()
         validation_data = torch.tensor(validation_data.values).float()
 
@@ -125,7 +125,6 @@ if __name__ == '__main__':
         clf.fit(validation_data)
 
         predictions = clf.predict(validation_data)
-        predictions[predictions == -1] = 0
 
         tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
@@ -139,7 +138,6 @@ if __name__ == '__main__':
         clf.fit(validation_data)
 
         predictions = clf.predict(validation_data)
-        predictions[predictions == -1] = 0
 
         tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
@@ -153,7 +151,6 @@ if __name__ == '__main__':
         clf.fit(validation_data)
 
         predictions = clf.predict(validation_data)
-        predictions[predictions == -1] = 0
 
         tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
@@ -167,7 +164,6 @@ if __name__ == '__main__':
         clf.fit(validation_data)
 
         predictions = clf.predict(validation_data)
-        predictions[predictions == -1] = 0
 
         tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 

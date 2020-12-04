@@ -89,7 +89,7 @@ class Autoencoder(nn.Module):
 
         bool_arr = errors >= self.optimal_threshold
 
-        return np.array([0 if elem else 1 for elem in bool_arr])
+        return np.array([-1 if elem else 1 for elem in bool_arr])
         
 
     def synthesize(self, x, num_samples=100, n_dim=20):
