@@ -75,13 +75,13 @@ class Autoencoder(nn.Module):
     def errors(self, x):
         x_hat = self.forward(x)
 
-        if self.loss == "mse":
-            err = (x_hat - x).pow(2).sum(dim=1)
-        elif self.loss == "aml":
-            err = (x_hat - x).pow(2).sum(dim=1) + (x_hat - self.mu_tensor).pow(2).sum(dim=1)
-        else:
-            err = (x_hat - x).pow(2).sum(dim=1)
+#        if self.loss == "mse":
+#            err = (x_hat - x).pow(2).sum(dim=1)
+#        elif self.loss == "aml":
+#            err = (x_hat - x).pow(2).sum(dim=1) + (x_hat - self.mu_tensor).pow(2).sum(dim=1)
+#        else:
 
+        err = (x_hat - x).pow(2).sum(dim=1)
         return err.detach().numpy()
 
     def predict(self, x):
@@ -151,10 +151,12 @@ class Autoencoder(nn.Module):
                 self.optimizer.zero_grad()
                 output = self.forward(inputs)
 
+                temp_mu_tensor = torch.tensor(inputs.numpy()[0].mean(axis=0))
+
                 if self.loss == "mse":
                     loss = (output - labels).pow(2).sum().mean()
                 elif self.loss == "aml":
-                    loss = (output - labels).pow(2).sum().mean() + (output - self.mu_tensor).pow(2).sum().mean()
+                    loss = (output - labels).pow(2).sum().mean() + (output - temp_mu_tensor).pow(2).sum().mean()
                 else:
                     loss = (output - labels).pow(2).sum().mean()
 

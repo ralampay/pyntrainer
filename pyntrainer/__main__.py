@@ -19,9 +19,9 @@ parser.add_argument("--model-file", help="Output model file", type=str, const=1,
 parser.add_argument("--chunk-size", help="Chunk size for reading large files", type=int, const=1, nargs='?', default=5000)
 parser.add_argument("--layers", help='Layers for autoencoder', type=int, nargs='+')
 parser.add_argument("--loss", help='Loss function', type=str, default="mse")
-parser.add_argument("--lr", help='Learning rate', type=float, default=0.005)
+parser.add_argument("--lr", help='Learning rate', type=float, default=0.001)
 parser.add_argument("--epochs", help='Number of epochs', type=int, default=100)
-parser.add_argument("--batch-size", help='Batch size', type=int, default=100)
+parser.add_argument("--batch-size", help='Batch size', type=int, default=50)
 parser.add_argument("--cont", help='Continue training from model file', type=bool, default=False)
 parser.add_argument("--eval-file", help='File to evaluate. Should have the format x1,x2,x3...y with y=1 if normal and y=0 if anomaly', type=str)
 
@@ -57,11 +57,11 @@ if __name__ == '__main__':
         positive_data = data[data[len(data.columns) - 1] == 1].iloc[:,:len(data.columns) - 1]
         negative_data = data[data[len(data.columns) - 1] == 0].iloc[:,:len(data.columns) - 1]
 
-        training_data            = positive_data.sample(frac=0.60)
+        training_data            = positive_data.sample(frac=0.20)
         positive_validation_data = positive_data.drop(training_data.index)
         negative_validation_data = negative_data.copy()
 
-        temp_positive = positive_data.copy()
+        temp_positive = positive_validation_data.copy()
         temp_positive[input_dimensionality] = 1
 
         temp_negative = negative_data.copy()
