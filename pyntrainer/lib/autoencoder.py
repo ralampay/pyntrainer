@@ -84,7 +84,8 @@ class Autoencoder(nn.Module):
 #        else:
 
         err = (x_hat - x).pow(2).sum(dim=1)
-        return err.detach().numpy()
+
+        return err.detach().cpu().numpy()
 
     def predict(self, x):
         errors = self.errors(x)
@@ -138,10 +139,10 @@ class Autoencoder(nn.Module):
         self.loss = loss
 
         # Get the mean vector
-        self.mu_tensor = torch.tensor(x.numpy()[0].mean(axis=0)).to(self.device)
+        self.mu_tensor = torch.tensor(x.cpu().numpy()[0].mean(axis=0)).to(self.device)
 
         data = AbstractDataset(x)
-        dataloader = DataLoader(dataset=data, batch_size=batch_size, shuffle=True, num_workers=2)
+        dataloader = DataLoader(dataset=data, batch_size=batch_size, shuffle=True, num_workers=0)
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
@@ -153,7 +154,7 @@ class Autoencoder(nn.Module):
                 self.optimizer.zero_grad()
                 output = self.forward(inputs)
 
-                temp_mu_tensor = torch.tensor(inputs.numpy()[0].mean(axis=0)).to(self.device)
+                temp_mu_tensor = torch.tensor(inputs.cpu().numpy()[0].mean(axis=0)).to(self.device)
 
                 if self.loss == "mse":
                     loss = (output - labels).pow(2).sum().mean()

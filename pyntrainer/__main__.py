@@ -97,6 +97,10 @@ if __name__ == '__main__':
         ## AML TRAINING ##
         print("Initializing autoencoder for AML loss...")
         net = Autoencoder(layers=layers, device=device)
+
+        if torch.cuda.is_available():
+            net.cuda()
+
         print(net)
 
         print("Training w/ AML loss...")
@@ -114,6 +118,10 @@ if __name__ == '__main__':
         ## MSE TRAINING ##
         print("Initializing autoencoder for MSE loss...")
         net = Autoencoder(layers=layers, device=device)
+
+        if torch.cuda.is_available():
+            net.cuda()
+
         print(net)
 
         print("Training w/ MSE loss...")
@@ -126,6 +134,9 @@ if __name__ == '__main__':
         evaluation_results.append(
             ["AE-MSE", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
         )
+
+        # Convert back to CPU before other methods
+        validation_data = validation_data.cpu()
 
         ## ONE CLASS SVM TRAINING ##
         print("Training OneClassSVM...")
