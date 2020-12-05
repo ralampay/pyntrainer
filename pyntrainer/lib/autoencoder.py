@@ -148,6 +148,7 @@ class Autoencoder(nn.Module):
         for epoch in range(epochs):
             curr_loss = 0
             for i, (inputs, labels) in enumerate(dataloader):
+                inputs, labels = inputs.to(self.device), labels.to(self.device)
                 self.optimizer.zero_grad()
                 output = self.forward(inputs)
 

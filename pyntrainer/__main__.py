@@ -88,8 +88,8 @@ if __name__ == '__main__':
         # Convert to tensor
         positive_data   = torch.tensor(data[data[len(data.columns) - 1] == 1].iloc[:,:len(data.columns) - 1].values).float().to(device)
         negative_data   = torch.tensor(data[data[len(data.columns) - 1] == -1].iloc[:,:len(data.columns) - 1].values).float().to(device)
-        training_data   = torch.tensor(training_data.values).float().to(device)
-        validation_data = torch.tensor(validation_data.values).float().to(device)
+        training_data   = torch.tensor(training_data.values).float()
+        validation_data = torch.tensor(validation_data.values).float()
 
         print("Validation Data:")
         print(validation_data)
