@@ -1,6 +1,7 @@
 import sys
 import argparse
 import os
+import math
 sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
 
 import pandas as pd
@@ -30,6 +31,9 @@ parser.add_argument("--epochs", help='Number of epochs', type=int, default=100)
 parser.add_argument("--batch-size", help='Batch size', type=int, default=50)
 parser.add_argument("--cont", help='Continue training from model file', type=bool, default=False)
 parser.add_argument("--eval-file", help='File to evaluate. Should have the format x1,x2,x3...y with y=1 if normal and y=0 if anomaly', type=str)
+parser.add_argument("--neg-cont", help='Rate of positive contamination', type=float)
+parser.add_argument("--pos-cont", help='Rate of positive contamination', type=float)
+parser.add_argument("--add-syn", help='Add synthetic noise', type=bool, default=True)
 
 args = parser.parse_args()
 
@@ -45,6 +49,9 @@ if __name__ == '__main__':
     batch_size  = args.batch_size
     cont        = args.cont
     eval_file   = args.eval_file
+
+    neg_cont = args.neg_cont
+    pos_cont = args.pos_cont
 
     if torch.cuda.is_available():
         dev = "cuda:0"
@@ -71,8 +78,19 @@ if __name__ == '__main__':
         positive_data = data[data[len(data.columns) - 1] == 1].iloc[:,:len(data.columns) - 1]
         negative_data = data[data[len(data.columns) - 1] == -1].iloc[:,:len(data.columns) - 1]
 
-        training_data            = positive_data.sample(frac=0.40)
+        training_data            = positive_data.sample(frac=0.70)
         positive_validation_data = positive_data.drop(training_data.index)
+
+        if neg_cont and neg_cont > 0:
+            print("Negative Contamination: %0.2f" % (neg_cont))
+            num_negative = math.floor(neg_cont * (len(negative_data) + len(positive_validation_data)))
+            negative_data = data[data[len(data.columns) - 1] == -1].iloc[:num_negative,:len(data.columns) - 1]
+
+        if pos_cont and pos_cont > 0:
+            print("Positive Contamination: %0.2f" % (pos_cont))
+            num_positive = math.floor(pos_cont * (len(negative_data) + len(positive_data)))
+            positive_data = data[data[len(data.columns) - 1] == 1].iloc[:num_positive,:len(data.columns) - 1]
+
         negative_validation_data = negative_data.copy()
 
         temp_positive = positive_validation_data.copy()
@@ -86,8 +104,8 @@ if __name__ == '__main__':
         validation_labels = validation_data_with_labels.iloc[:,-1:].values
 
         # Convert to tensor
-        positive_data   = torch.tensor(data[data[len(data.columns) - 1] == 1].iloc[:,:len(data.columns) - 1].values).float().to(device)
-        negative_data   = torch.tensor(data[data[len(data.columns) - 1] == -1].iloc[:,:len(data.columns) - 1].values).float().to(device)
+        positive_data   = torch.tensor(positive_data.values).float().to(device)
+        negative_data   = torch.tensor(negative_data.values).float().to(device)
         training_data   = torch.tensor(training_data.values).float()
         validation_data = torch.tensor(validation_data.values).float()
 
@@ -108,10 +126,11 @@ if __name__ == '__main__':
 
         tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-        ## EVALUATE RESULTS ##
-        evaluation_results.append(
-            ["AE-AML", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-        )
+        r = ["AE-AML", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+
+        evaluation_results.append(r)
+
+        print(tabulate([r], ["ALGO", "TP", "TN", "FP", "FN", "TPR", "TNR", "PPV", "NPV", "TS", "PT", "ACC", "F1", "MCC"], tablefmt="grid"))
 
         ## MSE TRAINING ##
         print("Initializing autoencoder for MSE loss...")
@@ -127,9 +146,11 @@ if __name__ == '__main__':
 
         tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-        evaluation_results.append(
-            ["AE-MSE", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-        )
+        r = ["AE-MSE", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+
+        evaluation_results.append(r)
+
+        print(tabulate([r], ["ALGO", "TP", "TN", "FP", "FN", "TPR", "TNR", "PPV", "NPV", "TS", "PT", "ACC", "F1", "MCC"], tablefmt="grid"))
 
         # Convert back to CPU before other methods
         validation_data = validation_data.cpu()

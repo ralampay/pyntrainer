@@ -18,13 +18,15 @@ from utils import htb
 from utils import fetch_threshold
 
 class Autoencoder(nn.Module):
-    def __init__(self, layers=[], device=torch.device("cpu")):
+    def __init__(self, layers=[], device=torch.device("cpu"), add_syn=True):
         super().__init__()
 
         self.device = device
 
         self.encoding_layers = nn.ModuleList([])
         self.decoding_layers = nn.ModuleList([])
+
+        self.add_syn = add_syn
 
         reversed_layers = list(reversed(layers))
 
@@ -157,7 +159,8 @@ class Autoencoder(nn.Module):
                 if self.loss == "mse":
                     loss = (output - labels).pow(2).sum().mean()
                 elif self.loss == "aml":
-                    loss = (output - labels).pow(2).sum().mean() + (output - temp_mu_tensor).pow(2).sum().mean()
+                    #loss = (output - labels).pow(2).sum().mean() + (output - temp_mu_tensor).pow(2).sum().mean()
+                    loss = ((output - labels).pow(2).sum() + (output - temp_mu_tensor).pow(2).sum()).mean()
                 else:
                     loss = (output - labels).pow(2).sum().mean()
 
@@ -171,11 +174,6 @@ class Autoencoder(nn.Module):
         if with_thresholding:
             print("Setting optimal threshold...")
 
-            if self.loss == "mse":
-                add_syn = False
-            elif self.loss == "aml":
-                add_syn = True
-
-            self.set_optimal_threshold(x, add_syn=add_syn)
+            self.set_optimal_threshold(x, add_syn=self.add_syn)
 
             print("Optimal threshold: %0.4f" % (self.optimal_threshold))

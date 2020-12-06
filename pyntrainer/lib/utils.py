@@ -52,6 +52,8 @@ def fetch_threshold(bins, counts, break_point):
             latest_min = abs(counts[i] - break_point)
             index = i
             threshold = ((bins[i + 1] - bins[i]) / 2) + bins[i]
+            #threshold = bins[i + 1]
+            #threshold = bins[i]
     
     return threshold
 
