@@ -25,15 +25,13 @@ parser.add_argument("--input-file", help="Input csv file for training")
 parser.add_argument("--model-file", help="Output model file", type=str, const=1, nargs='?', default="output.pth.tar")
 parser.add_argument("--chunk-size", help="Chunk size for reading large files", type=int, const=1, nargs='?', default=5000)
 parser.add_argument("--layers", help='Layers for autoencoder', type=int, nargs='+')
-parser.add_argument("--loss", help='Loss function', type=str, default="mse")
 parser.add_argument("--lr", help='Learning rate', type=float, default=0.001)
 parser.add_argument("--epochs", help='Number of epochs', type=int, default=100)
 parser.add_argument("--batch-size", help='Batch size', type=int, default=50)
 parser.add_argument("--cont", help='Continue training from model file', type=bool, default=False)
 parser.add_argument("--eval-file", help='File to evaluate. Should have the format x1,x2,x3...y with y=1 if normal and y=0 if anomaly', type=str)
 parser.add_argument("--neg-cont", help='Rate of positive contamination', type=float)
-parser.add_argument("--pos-cont", help='Rate of positive contamination', type=float)
-parser.add_argument("--add-syn", help='Add synthetic noise', type=bool, default=True)
+parser.add_argument("--add-syn", help='Add synthetic noise', type=bool, default=False)
 
 args = parser.parse_args()
 
@@ -43,15 +41,13 @@ if __name__ == '__main__':
     chunk_size  = args.chunk_size
     layers      = args.layers
     mode        = args.mode
-    loss        = args.loss
     lr          = args.lr
     epochs      = args.epochs
     batch_size  = args.batch_size
     cont        = args.cont
     eval_file   = args.eval_file
-
-    neg_cont = args.neg_cont
-    pos_cont = args.pos_cont
+    add_syn     = args.add_syn
+    neg_cont    = args.neg_cont
 
     if torch.cuda.is_available():
         dev = "cuda:0"
@@ -84,12 +80,7 @@ if __name__ == '__main__':
         if neg_cont and neg_cont > 0:
             print("Negative Contamination: %0.2f" % (neg_cont))
             num_negative = math.floor(neg_cont * (len(negative_data) + len(positive_validation_data)))
-            negative_data = data[data[len(data.columns) - 1] == -1].iloc[:num_negative,:len(data.columns) - 1]
-
-        if pos_cont and pos_cont > 0:
-            print("Positive Contamination: %0.2f" % (pos_cont))
-            num_positive = math.floor(pos_cont * (len(negative_data) + len(positive_data)))
-            positive_data = data[data[len(data.columns) - 1] == 1].iloc[:num_positive,:len(data.columns) - 1]
+            negative_data = data.sample(frac=1, random_state=200)[data[len(data.columns) - 1] == -1].iloc[:num_negative,:len(data.columns) - 1]
 
         negative_validation_data = negative_data.copy()
 
@@ -112,41 +103,21 @@ if __name__ == '__main__':
         print("Validation Data:")
         print(validation_data)
 
-        ## AML TRAINING ##
-        print("Initializing autoencoder for AML loss...")
-        net = Autoencoder(layers=layers, device=device)
-        net.to(device)
-
-        print(net)
-
-        print("Training w/ AML loss...")
-        net.train(training_data, epochs=epochs, lr=lr, batch_size=batch_size, loss="aml")
-
-        predictions = net.predict(validation_data)
-
-        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
-
-        r = ["AE-AML", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-
-        evaluation_results.append(r)
-
-        print(tabulate([r], ["ALGO", "TP", "TN", "FP", "FN", "TPR", "TNR", "PPV", "NPV", "TS", "PT", "ACC", "F1", "MCC"], tablefmt="grid"))
-
         ## MSE TRAINING ##
-        print("Initializing autoencoder for MSE loss...")
-        net = Autoencoder(layers=layers, device=device)
+        print("Initializing autoencoder...")
+        net = Autoencoder(layers=layers, device=device, add_syn=add_syn)
         net.to(device)
 
         print(net)
 
-        print("Training w/ MSE loss...")
-        net.train(training_data, epochs=epochs, lr=lr, batch_size=batch_size, loss="mse")
+        print("Training...")
+        net.train(training_data, epochs=epochs, lr=lr, batch_size=batch_size)
 
         predictions = net.predict(validation_data)
 
         tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-        r = ["AE-MSE", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+        r = ["AE-D", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
 
         evaluation_results.append(r)
 
@@ -220,7 +191,7 @@ if __name__ == '__main__':
             ["Training Data Points", len_training_data_points],
             ["# Normal Points", len_positive_validations],
             ["# Anomalies", len_negative_validations],
-            ["Contamination Percentage", int((len_negative_validations / len_validations) * 100)]
+            ["Contamination Percentage", math.floor((len_negative_validations / len_validations) * 100)]
         ]
 
         print(tabulate(metrics_results, ["METRIC", "VALUE"], tablefmt="grid"))
@@ -246,5 +217,5 @@ if __name__ == '__main__':
             net.load(model_file)
 
         print("Training...")
-        net.train(tensor_data, epochs=epochs, lr=lr, batch_size=batch_size, loss=loss)
+        net.train(tensor_data, epochs=epochs, lr=lr, batch_size=batch_size)
         net.save(model_file)

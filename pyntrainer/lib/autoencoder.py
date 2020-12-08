@@ -11,11 +11,14 @@ from scipy.stats import iqr
 import numpy as np
 from scipy import stats
 
+
 from abstract_dataset import AbstractDataset
 
 from utils import create_histogram
 from utils import htb
 from utils import fetch_threshold
+
+import statistics
 
 class Autoencoder(nn.Module):
     def __init__(self, layers=[], device=torch.device("cpu"), add_syn=True):
@@ -59,8 +62,6 @@ class Autoencoder(nn.Module):
         state = {
             'state_dict': self.state_dict(), 
             'optimizer': self.optimizer.state_dict(), 
-            'loss': self.loss,
-            'mu_tensor': self.mu_tensor,
             'optimal_threshold': self.optimal_threshold
         }
 
@@ -71,18 +72,13 @@ class Autoencoder(nn.Module):
         
         self.load_state_dict(state['state_dict'])
 
-        self.optimizer  = state['optimizer']
-        self.loss       = state['loss']
-        self.mu_tensor  = state['mu_tensor']
+        self.optimizer         = state['optimizer']
         self.optimal_threshold = state['optimal_threshold']
 
     def errors(self, x):
         x_hat = self.forward(x)
 
-        if self.loss == "mse":
-            err = (x_hat - x).pow(2).sum(dim=1)
-        elif self.loss == "aml":
-            err = (x_hat - x).pow(2).sum(dim=1) + (x_hat - self.mu_tensor).pow(2).sum(dim=1)
+        err = (x_hat - x).pow(2).sum(dim=1).sqrt()
 
         return err.detach().cpu().numpy()
 
@@ -105,7 +101,7 @@ class Autoencoder(nn.Module):
             for r_i in rand_indices:
                 z_set[i][r_i] = random.uniform(0, 1)
 
-        return self.decode(z_set)
+        return self.decode(z)
 
     def set_optimal_threshold(self, x, add_syn=True, num_samples=100, n_dim=5):
         errors = self.errors(x)
@@ -134,12 +130,7 @@ class Autoencoder(nn.Module):
 
         return self.optimal_threshold
 
-    def train(self, x, epochs=100, lr=0.005, batch_size=5, loss="mse", with_thresholding=True):
-        self.loss = loss
-
-        # Get the mean vector
-        self.mu_tensor = torch.tensor(x.cpu().numpy()[0].mean(axis=0)).to(self.device)
-
+    def train(self, x, epochs=100, lr=0.005, batch_size=5, with_thresholding=True):
         data = AbstractDataset(x)
         dataloader = DataLoader(dataset=data, batch_size=batch_size, shuffle=True, num_workers=4)
 
@@ -154,15 +145,7 @@ class Autoencoder(nn.Module):
                 self.optimizer.zero_grad()
                 output = self.forward(inputs)
 
-                temp_mu_tensor = torch.tensor(inputs.cpu().numpy()[0].mean(axis=0)).to(self.device)
-
-                if self.loss == "mse":
-                    loss = (output - labels).pow(2).sum().mean()
-                elif self.loss == "aml":
-                    #loss = (output - labels).pow(2).sum().mean() + (output - temp_mu_tensor).pow(2).sum().mean()
-                    loss = ((output - labels).pow(2).sum() + (output - temp_mu_tensor).pow(2).sum()).mean()
-                else:
-                    loss = (output - labels).pow(2).sum().mean()
+                loss = (output - labels).pow(2).sum().sqrt().mean()
 
                 curr_loss += loss
                 loss.backward()
