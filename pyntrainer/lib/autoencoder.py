@@ -145,7 +145,7 @@ class Autoencoder(nn.Module):
                 self.optimizer.zero_grad()
                 output = self.forward(inputs)
 
-                loss = (output - labels).pow(2).sum().sqrt().mean()
+                loss = (output - labels).pow(2).sum(dim=1).sqrt().mean()
 
                 curr_loss += loss
                 loss.backward()

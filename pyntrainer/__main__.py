@@ -4,6 +4,7 @@ import os
 import math
 sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
 
+import numpy as np
 import pandas as pd
 from torch import tensor
 import torch
@@ -18,6 +19,17 @@ from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.covariance import EllipticEnvelope
 
+# https://github.com/yzhao062/pyod
+from pyod.models.abod import ABOD
+from pyod.models.copod import COPOD
+from pyod.models.vae import VAE
+from pyod.models.mcd import MCD
+from pyod.models.so_gaal import SO_GAAL
+from pyod.models.mo_gaal import MO_GAAL
+from pyod.models.lscp import LSCP
+from pyod.models.loda import LODA
+from pyod.models.lof import LOF
+
 parser = argparse.ArgumentParser(description="PynTrainer: Stochastic Autoencoder trainer program")
 
 parser.add_argument("--mode", help="Mode to be used", choices=["train", "eval"], type=str, default="eval")
@@ -31,7 +43,7 @@ parser.add_argument("--batch-size", help='Batch size', type=int, default=50)
 parser.add_argument("--cont", help='Continue training from model file', type=bool, default=False)
 parser.add_argument("--eval-file", help='File to evaluate. Should have the format x1,x2,x3...y with y=1 if normal and y=0 if anomaly', type=str)
 parser.add_argument("--neg-cont", help='Rate of positive contamination', type=float)
-parser.add_argument("--add-syn", help='Add synthetic noise', type=bool, default=False)
+parser.add_argument("--add-syn", help='Add synthetic noise', type=bool, default=True)
 
 args = parser.parse_args()
 
@@ -176,6 +188,128 @@ if __name__ == '__main__':
 
         evaluation_results.append(
             ["ROB-COV", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+        )
+
+        ## Algorithms from this point onwards need mapping of 0 to 1 and 1 to -1
+
+        ## COPOD ##
+        print("Training ABOD...")
+        clf = ABOD()
+        clf.fit(validation_data)
+
+        predictions = np.array(clf.predict(validation_data))
+        predictions = np.where(predictions==1, -1, predictions)
+        predictions = np.where(predictions==0, 1, predictions)
+
+        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+
+        evaluation_results.append(
+            ["ABOD", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+        )
+
+        ## COPOD ##
+        print("Training COPOD...")
+        clf = COPOD()
+        clf.fit(validation_data)
+
+        predictions = np.array(clf.predict(validation_data))
+        predictions = np.where(predictions==1, -1, predictions)
+        predictions = np.where(predictions==0, 1, predictions)
+
+        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+
+        evaluation_results.append(
+            ["COPOD", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+        )
+
+        ## VAE ##
+        print("Training VAE...")
+        clf = VAE(encoder_neurons=layers, decoder_neurons=layers.reverse())
+        clf.fit(validation_data)
+
+        predictions = np.array(clf.predict(validation_data))
+        predictions = np.where(predictions==1, -1, predictions)
+        predictions = np.where(predictions==0, 1, predictions)
+
+        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+
+        evaluation_results.append(
+            ["VAE", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+        )
+
+        ## MCD ##
+        print("Training MCD...")
+        clf = MCD()
+        clf.fit(validation_data)
+
+        predictions = np.array(clf.predict(validation_data))
+        predictions = np.where(predictions==1, -1, predictions)
+        predictions = np.where(predictions==0, 1, predictions)
+
+        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+
+        evaluation_results.append(
+            ["MCD", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+        )
+
+        ## SO_GAAL ##
+        print("Training SO_GAAL...")
+        clf = SO_GAAL()
+        clf.fit(validation_data)
+
+        predictions = np.array(clf.predict(validation_data))
+        predictions = np.where(predictions==1, -1, predictions)
+        predictions = np.where(predictions==0, 1, predictions)
+
+        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+
+        evaluation_results.append(
+            ["SO_GAAL", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+        )
+
+        ## MO_GAAL ##
+        print("Training MO_GAAL...")
+        clf = MO_GAAL()
+        clf.fit(validation_data)
+
+        predictions = np.array(clf.predict(validation_data))
+        predictions = np.where(predictions==1, -1, predictions)
+        predictions = np.where(predictions==0, 1, predictions)
+
+        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+
+        evaluation_results.append(
+            ["MO_GAAL", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+        )
+
+        ## LSCP ##
+        print("Training LSCP...")
+        clf = LSCP([LOF(), LOF()])
+        clf.fit(validation_data)
+
+        predictions = np.array(clf.predict(validation_data))
+        predictions = np.where(predictions==1, -1, predictions)
+        predictions = np.where(predictions==0, 1, predictions)
+
+        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+
+        evaluation_results.append(
+            ["LSCP", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+        )
+
+        ## LODA ##
+        print("Training LODA...")
+        clf = LODA()
+        clf.fit(validation_data)
+
+        predictions = np.array(clf.predict(validation_data))
+        predictions = np.where(predictions==1, -1, predictions)
+        predictions = np.where(predictions==0, 1, predictions)
+
+        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+
+        evaluation_results.append(
+            ["LODA", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
         )
 
         ## EVALUATE RESULTS ##
