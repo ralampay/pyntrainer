@@ -19,6 +19,8 @@ from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.covariance import EllipticEnvelope
 
+import csv 
+
 # https://github.com/yzhao062/pyod
 from pyod.models.abod import ABOD
 from pyod.models.copod import COPOD
@@ -44,6 +46,7 @@ parser.add_argument("--cont", help='Continue training from model file', type=boo
 parser.add_argument("--eval-file", help='File to evaluate. Should have the format x1,x2,x3...y with y=1 if normal and y=0 if anomaly', type=str)
 parser.add_argument("--neg-cont", help='Rate of positive contamination', type=float)
 parser.add_argument("--add-syn", help='Add synthetic noise', type=bool, default=True)
+parser.add_argument("--printout", help='File for results of eval (csv)', type=str)
 
 args = parser.parse_args()
 
@@ -60,6 +63,7 @@ if __name__ == '__main__':
     eval_file   = args.eval_file
     add_syn     = args.add_syn
     neg_cont    = args.neg_cont
+    printout    = args.printout
 
     if torch.cuda.is_available():
         dev = "cuda:0"
@@ -328,7 +332,14 @@ if __name__ == '__main__':
             ["Contamination Percentage", math.floor((len_negative_validations / len_validations) * 100)]
         ]
 
-        print(tabulate(metrics_results, ["METRIC", "VALUE"], tablefmt="grid"))
+        ## EVALUATE RESULTS ##
+        print(tabulate(metrics_results, ["Metric", "Value"], tablefmt="grid"))
+
+        if printout:
+            print("Saving results to %s" % (printout))
+            df = pd.DataFrame(evaluation_results)
+            df.to_csv(printout, header=None, index=False)
+
     elif mode == "train":
         print("Initializing autoencoder...")
         net = Autoencoder(layers=layers)
