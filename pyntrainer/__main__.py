@@ -67,7 +67,7 @@ if __name__ == '__main__':
 
   if torch.cuda.is_available():
     dev = "cuda:0"
-      print("CUDA is available...")
+    print("CUDA is available...")
   else:
     dev = "cpu"
 
