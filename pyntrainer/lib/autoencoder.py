@@ -151,8 +151,8 @@ class Autoencoder(nn.Module):
         loss.backward()
         self.optimizer.step()
 
-        curr_loss = curr_loss / num_iterations
-        print("=> Epoch: %i\tLoss: %0.5f" % (epoch + 1, curr_loss.item()))
+      curr_loss = curr_loss / num_iterations
+      print("=> Epoch: %i\tLoss: %0.5f" % (epoch + 1, curr_loss.item()))
 
     if with_thresholding:
       print("Setting optimal threshold...")
