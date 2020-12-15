@@ -32,25 +32,25 @@ from pyod.models.lscp import LSCP
 from pyod.models.loda import LODA
 from pyod.models.lof import LOF
 
-parser = argparse.ArgumentParser(description="PynTrainer: Stochastic Autoencoder trainer program")
-
-parser.add_argument("--mode", help="Mode to be used", choices=["train", "eval"], type=str, default="eval")
-parser.add_argument("--input-file", help="Input csv file for training")
-parser.add_argument("--model-file", help="Output model file", type=str, const=1, nargs='?', default="output.pth.tar")
-parser.add_argument("--chunk-size", help="Chunk size for reading large files", type=int, const=1, nargs='?', default=5000)
-parser.add_argument("--layers", help='Layers for autoencoder', type=int, nargs='+')
-parser.add_argument("--lr", help='Learning rate', type=float, default=0.001)
-parser.add_argument("--epochs", help='Number of epochs', type=int, default=100)
-parser.add_argument("--batch-size", help='Batch size', type=int, default=50)
-parser.add_argument("--cont", help='Continue training from model file', type=bool, default=False)
-parser.add_argument("--eval-file", help='File to evaluate. Should have the format x1,x2,x3...y with y=1 if normal and y=0 if anomaly', type=str)
-parser.add_argument("--neg-cont", help='Rate of positive contamination', type=float)
-parser.add_argument("--add-syn", help='Add synthetic noise', type=bool, default=True)
-parser.add_argument("--printout", help='File for results of eval (csv)', type=str)
-
-args = parser.parse_args()
-
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="PynTrainer: Stochastic Autoencoder trainer program")
+
+    parser.add_argument("--mode", help="Mode to be used", choices=["train", "eval"], type=str, default="eval")
+    parser.add_argument("--input-file", help="Input csv file for training")
+    parser.add_argument("--model-file", help="Output model file", type=str, const=1, nargs='?', default="output.pth.tar")
+    parser.add_argument("--chunk-size", help="Chunk size for reading large files", type=int, const=1, nargs='?', default=5000)
+    parser.add_argument("--layers", help='Layers for autoencoder', type=int, nargs='+')
+    parser.add_argument("--lr", help='Learning rate', type=float, default=0.001)
+    parser.add_argument("--epochs", help='Number of epochs', type=int, default=100)
+    parser.add_argument("--batch-size", help='Batch size', type=int, default=50)
+    parser.add_argument("--cont", help='Continue training from model file', type=bool, default=False)
+    parser.add_argument("--eval-file", help='File to evaluate. Should have the format x1,x2,x3...y with y=1 if normal and y=0 if anomaly', type=str)
+    parser.add_argument("--neg-cont", help='Rate of positive contamination', type=float)
+    parser.add_argument("--add-syn", help='Add synthetic noise', type=bool, default=True)
+    parser.add_argument("--printout", help='File for results of eval (csv)', type=str)
+
+    args = parser.parse_args()
+
     input_file  = args.input_file
     model_file  = args.model_file
     chunk_size  = args.chunk_size
@@ -363,4 +363,6 @@ if __name__ == '__main__':
 
         print("Training...")
         net.train(tensor_data, epochs=epochs, lr=lr, batch_size=batch_size)
+
+        print("Saving to %s..." % (model_file))
         net.save(model_file)
