@@ -21,142 +21,142 @@ from utils import fetch_threshold
 import statistics
 
 class Autoencoder(nn.Module):
-    def __init__(self, layers=[], device=torch.device("cpu"), add_syn=True):
-        super().__init__()
+  def __init__(self, layers=[], device=torch.device("cpu"), add_syn=True):
+    super().__init__()
 
-        self.device = device
+    self.device = device
 
-        self.encoding_layers = nn.ModuleList([])
-        self.decoding_layers = nn.ModuleList([])
+    self.encoding_layers = nn.ModuleList([])
+    self.decoding_layers = nn.ModuleList([])
 
-        self.add_syn = add_syn
+    self.add_syn = add_syn
 
-        reversed_layers = list(reversed(layers))
+    reversed_layers = list(reversed(layers))
 
-        for i in range(len(layers) - 1):
-            self.encoding_layers.append(nn.Linear(layers[i], layers[i+1]))
-            self.decoding_layers.append(nn.Linear(reversed_layers[i], reversed_layers[i+1]))
+    for i in range(len(layers) - 1):
+      self.encoding_layers.append(nn.Linear(layers[i], layers[i+1]))
+      self.decoding_layers.append(nn.Linear(reversed_layers[i], reversed_layers[i+1]))
 
-    def encode(self, x):
-        for i in range(len(self.encoding_layers)):
-            x = F.relu(self.encoding_layers[i](x))
+  def encode(self, x):
+    for i in range(len(self.encoding_layers)):
+      x = F.relu(self.encoding_layers[i](x))
 
-        return x
+    return x
 
-    def decode(self, x):
-        for i in range(len(self.decoding_layers)):
-            if i != len(self.decoding_layers) - 1:
-                x = F.relu(self.decoding_layers[i](x))
-            else:
-                x = torch.sigmoid(self.decoding_layers[i](x))
+  def decode(self, x):
+    for i in range(len(self.decoding_layers)):
+      if i != len(self.decoding_layers) - 1:
+        x = F.relu(self.decoding_layers[i](x))
+      else:
+        x = torch.sigmoid(self.decoding_layers[i](x))
 
-        return x
+      return x
 
-    def forward(self, x):
-        x = self.encode(x)
-        x = self.decode(x)
+  def forward(self, x):
+    x = self.encode(x)
+    x = self.decode(x)
 
-        return x
+    return x
 
-    def save(self, filename):
-        state = {
-            'state_dict': self.state_dict(), 
-            'optimizer': self.optimizer.state_dict(), 
-            'optimal_threshold': self.optimal_threshold
-        }
+  def save(self, filename):
+    state = {
+      'state_dict': self.state_dict(), 
+      'optimizer': self.optimizer.state_dict(), 
+      'optimal_threshold': self.optimal_threshold
+    }
 
-        torch.save(state, filename)
+    torch.save(state, filename)
 
-    def load(self, filename):
-        state = torch.load(filename)
-        
-        self.load_state_dict(state['state_dict'])
+  def load(self, filename):
+    state = torch.load(filename)
 
-        self.optimizer         = state['optimizer']
-        self.optimal_threshold = state['optimal_threshold']
+    self.load_state_dict(state['state_dict'])
 
-    def errors(self, x):
-        x_hat = self.forward(x)
+    self.optimizer         = state['optimizer']
+    self.optimal_threshold = state['optimal_threshold']
 
-        err = (x_hat - x).pow(2).sum(dim=1).sqrt()
+  def errors(self, x):
+    x_hat = self.forward(x)
 
-        return err.detach().cpu().numpy()
+    err = (x_hat - x).pow(2).sum(dim=1).sqrt()
 
-    def predict(self, x):
-        errors = self.errors(x)
+    return err.detach().cpu().numpy()
 
-        bool_arr = errors >= self.optimal_threshold
+  def predict(self, x):
+    errors = self.errors(x)
 
-        return np.array([-1 if elem else 1 for elem in bool_arr])
-        
+    bool_arr = errors >= self.optimal_threshold
 
-    def synthesize(self, x, num_samples=100, n_dim=20):
-        z = self.encode(x)
+    return np.array([-1 if elem else 1 for elem in bool_arr])
 
-        z_set = z[torch.randperm(len(z))[:num_samples]]
 
-        for i in range(len(z_set)):
-            rand_indices = torch.randperm(len(z_set[i]))[:n_dim]
+  def synthesize(self, x, num_samples=100, n_dim=20):
+    z = self.encode(x)
 
-            for r_i in rand_indices:
-                z_set[i][r_i] = random.uniform(0, 1)
+    z_set = z[torch.randperm(len(z))[:num_samples]]
 
-        return self.decode(z)
+    for i in range(len(z_set)):
+      rand_indices = torch.randperm(len(z_set[i]))[:n_dim]
 
-    def set_optimal_threshold(self, x, add_syn=True, num_samples=100, n_dim=5):
-        errors = self.errors(x)
+      for r_i in rand_indices:
+        z_set[i][r_i] = random.uniform(0, 1)
 
-        if add_syn:
-            syn_errors = self.errors(self.synthesize(x, num_samples=num_samples, n_dim=n_dim))
+    return self.decode(z)
 
-            errors = np.concatenate((errors, syn_errors), axis=0)
+  def set_optimal_threshold(self, x, add_syn=True, num_samples=100, n_dim=5):
+    errors = self.errors(x)
 
-        # Calculate the number of bins according to Freedman-Diaconis rule
-        bin_width   = 2 * iqr(errors) / np.power(len(errors), (1/3))
-        num_bins    = (np.max(errors) - np.min(errors)) / bin_width
+    if add_syn:
+      syn_errors = self.errors(self.synthesize(x, num_samples=num_samples, n_dim=n_dim))
 
-        hist, bins = create_histogram(errors, num_bins=num_bins, step=bin_width)
-        occurences = [float(o) for o in hist.tolist()]
+      errors = np.concatenate((errors, syn_errors), axis=0)
 
-        breaks = htb(hist)
+    # Calculate the number of bins according to Freedman-Diaconis rule
+    bin_width = 2 * iqr(errors) / np.power(len(errors), (1/3))
+    num_bins  = (np.max(errors) - np.min(errors)) / bin_width
 
-        possible_thresholds = []
+    hist, bins = create_histogram(errors, num_bins=num_bins, step=bin_width)
+    occurences = [float(o) for o in hist.tolist()]
 
-        for b in breaks:
-            t = fetch_threshold(bins, hist, b)
-            possible_thresholds.append(t)
+    breaks = htb(hist)
 
-        self.optimal_threshold = max(possible_thresholds)
+    possible_thresholds = []
 
-        return self.optimal_threshold
+    for b in breaks:
+      t = fetch_threshold(bins, hist, b)
+      possible_thresholds.append(t)
 
-    def train(self, x, epochs=100, lr=0.005, batch_size=5, with_thresholding=True):
-        data = AbstractDataset(x)
-        dataloader = DataLoader(dataset=data, batch_size=batch_size, shuffle=True, num_workers=4)
+      self.optimal_threshold = max(possible_thresholds)
 
-        self.optimizer = optim.Adam(self.parameters(), lr=lr)
+    return self.optimal_threshold
 
-        num_iterations = len(x) / batch_size
+  def train(self, x, epochs=100, lr=0.005, batch_size=5, with_thresholding=True):
+    data = AbstractDataset(x)
+    dataloader = DataLoader(dataset=data, batch_size=batch_size, shuffle=True, num_workers=4)
 
-        for epoch in range(epochs):
-            curr_loss = 0
-            for i, (inputs, labels) in enumerate(dataloader):
-                inputs, labels = inputs.to(self.device), labels.to(self.device)
-                self.optimizer.zero_grad()
-                output = self.forward(inputs)
+    self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
-                loss = (output - labels).pow(2).sum(dim=1).sqrt().mean()
+    num_iterations = len(x) / batch_size
 
-                curr_loss += loss
-                loss.backward()
-                self.optimizer.step()
+    for epoch in range(epochs):
+      curr_loss = 0
+      for i, (inputs, labels) in enumerate(dataloader):
+        inputs, labels = inputs.to(self.device), labels.to(self.device)
+        self.optimizer.zero_grad()
+        output = self.forward(inputs)
 
-            curr_loss = curr_loss / num_iterations
-            print("=> Epoch: %i\tLoss: %0.5f" % (epoch + 1, curr_loss.item()))
+        loss = (output - labels).pow(2).sum(dim=1).sqrt().mean()
 
-        if with_thresholding:
-            print("Setting optimal threshold...")
+        curr_loss += loss
+        loss.backward()
+        self.optimizer.step()
 
-            self.set_optimal_threshold(x, add_syn=self.add_syn)
+        curr_loss = curr_loss / num_iterations
+        print("=> Epoch: %i\tLoss: %0.5f" % (epoch + 1, curr_loss.item()))
 
-            print("Optimal threshold: %0.4f" % (self.optimal_threshold))
+    if with_thresholding:
+      print("Setting optimal threshold...")
+
+      self.set_optimal_threshold(x, add_syn=self.add_syn)
+
+      print("Optimal threshold: %0.4f" % (self.optimal_threshold))
