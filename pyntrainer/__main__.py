@@ -19,7 +19,7 @@ from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.covariance import EllipticEnvelope
 
-import csv 
+import csv
 
 # https://github.com/yzhao062/pyod
 from pyod.models.abod import ABOD
@@ -33,336 +33,336 @@ from pyod.models.loda import LODA
 from pyod.models.lof import LOF
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="PynTrainer: Stochastic Autoencoder trainer program")
-
-    parser.add_argument("--mode", help="Mode to be used", choices=["train", "eval"], type=str, default="eval")
-    parser.add_argument("--input-file", help="Input csv file for training")
-    parser.add_argument("--model-file", help="Output model file", type=str, const=1, nargs='?', default="output.pth.tar")
-    parser.add_argument("--chunk-size", help="Chunk size for reading large files", type=int, const=1, nargs='?', default=5000)
-    parser.add_argument("--layers", help='Layers for autoencoder', type=int, nargs='+')
-    parser.add_argument("--lr", help='Learning rate', type=float, default=0.001)
-    parser.add_argument("--epochs", help='Number of epochs', type=int, default=100)
-    parser.add_argument("--batch-size", help='Batch size', type=int, default=50)
-    parser.add_argument("--cont", help='Continue training from model file', type=bool, default=False)
-    parser.add_argument("--eval-file", help='File to evaluate. Should have the format x1,x2,x3...y with y=1 if normal and y=0 if anomaly', type=str)
-    parser.add_argument("--neg-cont", help='Rate of positive contamination', type=float)
-    parser.add_argument("--add-syn", help='Add synthetic noise', type=bool, default=True)
-    parser.add_argument("--printout", help='File for results of eval (csv)', type=str)
+  parser = argparse.ArgumentParser(description="PynTrainer: Stochastic Autoencoder trainer program")
+
+  parser.add_argument("--mode", help="Mode to be used", choices=["train", "eval"], type=str, default="eval")
+  parser.add_argument("--input-file", help="Input csv file for training")
+  parser.add_argument("--model-file", help="Output model file", type=str, const=1, nargs='?', default="output.pth.tar")
+  parser.add_argument("--chunk-size", help="Chunk size for reading large files", type=int, const=1, nargs='?', default=5000)
+  parser.add_argument("--layers", help='Layers for autoencoder', type=int, nargs='+')
+  parser.add_argument("--lr", help='Learning rate', type=float, default=0.001)
+  parser.add_argument("--epochs", help='Number of epochs', type=int, default=100)
+  parser.add_argument("--batch-size", help='Batch size', type=int, default=50)
+  parser.add_argument("--cont", help='Continue training from model file', type=bool, default=False)
+  parser.add_argument("--eval-file", help='File to evaluate. Should have the format x1,x2,x3...y with y=1 if normal and y=0 if anomaly', type=str)
+  parser.add_argument("--neg-cont", help='Rate of positive contamination', type=float)
+  parser.add_argument("--add-syn", help='Add synthetic noise', type=bool, default=True)
+  parser.add_argument("--printout", help='File for results of eval (csv)', type=str)
+
+  args = parser.parse_args()
+
+  input_file  = args.input_file
+  model_file  = args.model_file
+  chunk_size  = args.chunk_size
+  layers      = args.layers
+  mode        = args.mode
+  lr          = args.lr
+  epochs      = args.epochs
+  batch_size  = args.batch_size
+  cont        = args.cont
+  eval_file   = args.eval_file
+  add_syn     = args.add_syn
+  neg_cont    = args.neg_cont
+  printout    = args.printout
 
-    args = parser.parse_args()
+  if torch.cuda.is_available():
+    dev = "cuda:0"
+      print("CUDA is available...")
+  else:
+    dev = "cpu"
 
-    input_file  = args.input_file
-    model_file  = args.model_file
-    chunk_size  = args.chunk_size
-    layers      = args.layers
-    mode        = args.mode
-    lr          = args.lr
-    epochs      = args.epochs
-    batch_size  = args.batch_size
-    cont        = args.cont
-    eval_file   = args.eval_file
-    add_syn     = args.add_syn
-    neg_cont    = args.neg_cont
-    printout    = args.printout
+  device = torch.device(dev)
 
-    if torch.cuda.is_available():
-        dev = "cuda:0"
-        print("CUDA is available...")
-    else:
-        dev = "cpu"
+  if mode == "train":
+    print("Initializing autoencoder...")
+    net = Autoencoder(layers=layers)
+    print(net)
 
-    device = torch.device(dev)
+    print("Loading training data...")
+    data = pd.DataFrame()
 
-    if mode == "eval":
-        evaluation_results = []
+    for i, chunk in enumerate(pd.read_csv(input_file, header=None, chunksize=chunk_size)):
+      print("Reading chunk: %d" % (i+1))
+      print(chunk)
+      data = data.append(chunk)
 
-        print("Loading training data...")
-        data = pd.DataFrame()
+    tensor_data = torch.tensor(data.values).float()
 
-        for i, chunk in enumerate(pd.read_csv(input_file, header=None, chunksize=chunk_size)):
-            print("Reading chunk: %d" % (i+1))
-            print(chunk)
-            data = data.append(chunk)
+    input_dimensionality = len(data.columns)
+    print("Input Dimensionality: %d" % (input_dimensionality))
 
-        input_dimensionality = len(data.columns) - 1
-        print("Input Dimensionality: %d" % (input_dimensionality))
+    if cont:
+      net.load(model_file)
 
-        positive_data = data[data[len(data.columns) - 1] == 1].iloc[:,:len(data.columns) - 1]
-        negative_data = data[data[len(data.columns) - 1] == -1].iloc[:,:len(data.columns) - 1]
+    print("Training...")
+    net.train(tensor_data, epochs=epochs, lr=lr, batch_size=batch_size)
 
-        training_data            = positive_data.sample(frac=0.70)
-        positive_validation_data = positive_data.drop(training_data.index)
+    print("Saving to %s..." % (model_file))
+    net.save(model_file)
 
-        if neg_cont and neg_cont > 0:
-            print("Negative Contamination: %0.2f" % (neg_cont))
-            num_negative = math.floor(neg_cont * (len(negative_data) + len(positive_validation_data)))
-            negative_data = data.sample(frac=1, random_state=200)[data[len(data.columns) - 1] == -1].iloc[:num_negative,:len(data.columns) - 1]
+  elif mode == "eval":
+    evaluation_results = []
 
-        negative_validation_data = negative_data.copy()
+    print("Loading training data...")
+    data = pd.DataFrame()
 
-        temp_positive = positive_validation_data.copy()
-        temp_positive[input_dimensionality] = 1
+    for i, chunk in enumerate(pd.read_csv(input_file, header=None, chunksize=chunk_size)):
+      print("Reading chunk: %d" % (i+1))
+      print(chunk)
+      data = data.append(chunk)
 
-        temp_negative = negative_data.copy()
-        temp_negative[input_dimensionality] = -1
+    input_dimensionality = len(data.columns) - 1
+    print("Input Dimensionality: %d" % (input_dimensionality))
 
-        validation_data_with_labels = pd.concat([temp_positive, temp_negative], ignore_index=True)
-        validation_data   = validation_data_with_labels.iloc[:,:len(data.columns) - 1]
-        validation_labels = validation_data_with_labels.iloc[:,-1:].values
+    positive_data = data[data[len(data.columns) - 1] == 1].iloc[:,:len(data.columns) - 1]
+    negative_data = data[data[len(data.columns) - 1] == -1].iloc[:,:len(data.columns) - 1]
 
-        # Convert to tensor
-        positive_data   = torch.tensor(positive_data.values).float().to(device)
-        negative_data   = torch.tensor(negative_data.values).float().to(device)
-        training_data   = torch.tensor(training_data.values).float()
-        validation_data = torch.tensor(validation_data.values).float()
+    training_data            = positive_data.sample(frac=0.70)
+    positive_validation_data = positive_data.drop(training_data.index)
 
-        print("Validation Data:")
-        print(validation_data)
+    if neg_cont and neg_cont > 0:
+      print("Negative Contamination: %0.2f" % (neg_cont))
+      num_negative = math.floor(neg_cont * (len(negative_data) + len(positive_validation_data)))
+      negative_data = data.sample(frac=1, random_state=200)[data[len(data.columns) - 1] == -1].iloc[:num_negative,:len(data.columns) - 1]
 
-        ## MSE TRAINING ##
-        print("Initializing autoencoder...")
-        net = Autoencoder(layers=layers, device=device, add_syn=add_syn)
-        net.to(device)
+    negative_validation_data = negative_data.copy()
 
-        print(net)
+    temp_positive = positive_validation_data.copy()
+    temp_positive[input_dimensionality] = 1
 
-        print("Training...")
-        net.train(training_data, epochs=epochs, lr=lr, batch_size=batch_size)
+    temp_negative = negative_data.copy()
+    temp_negative[input_dimensionality] = -1
 
-        predictions = net.predict(validation_data)
+    validation_data_with_labels = pd.concat([temp_positive, temp_negative], ignore_index=True)
+    validation_data   = validation_data_with_labels.iloc[:,:len(data.columns) - 1]
+    validation_labels = validation_data_with_labels.iloc[:,-1:].values
 
-        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+    # Convert to tensor
+    positive_data   = torch.tensor(positive_data.values).float().to(device)
+    negative_data   = torch.tensor(negative_data.values).float().to(device)
+    training_data   = torch.tensor(training_data.values).float()
+    validation_data = torch.tensor(validation_data.values).float()
 
-        r = ["AE-D", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+    print("Validation Data:")
+    print(validation_data)
 
-        evaluation_results.append(r)
+    ## MSE TRAINING ##
+    print("Initializing autoencoder...")
+    net = Autoencoder(layers=layers, device=device, add_syn=add_syn)
+    net.to(device)
 
-        print(tabulate([r], ["ALGO", "TP", "TN", "FP", "FN", "TPR", "TNR", "PPV", "NPV", "TS", "PT", "ACC", "F1", "MCC"], tablefmt="grid"))
+    print(net)
 
-        # Convert back to CPU before other methods
-        validation_data = validation_data.cpu()
+    print("Training...")
+    net.train(training_data, epochs=epochs, lr=lr, batch_size=batch_size)
 
-        ## ONE CLASS SVM TRAINING ##
-        print("Training OneClassSVM...")
-        clf = svm.OneClassSVM(gamma="auto")
-        clf.fit(validation_data)
+    predictions = net.predict(validation_data)
 
-        predictions = clf.predict(validation_data)
+    tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+    r = ["AE-D", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
 
-        evaluation_results.append(
-            ["OC-SVM", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-        )
+    evaluation_results.append(r)
 
-        ## ISOLATION FOREST TRAINING ##
-        print("Training Isolation Forest...")
-        clf = IsolationForest(random_state=0)
-        clf.fit(validation_data)
+    print(tabulate([r], ["ALGO", "TP", "TN", "FP", "FN", "TPR", "TNR", "PPV", "NPV", "TS", "PT", "ACC", "F1", "MCC"], tablefmt="grid"))
 
-        predictions = clf.predict(validation_data)
+    # Convert back to CPU before other methods
+    validation_data = validation_data.cpu()
 
-        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+    ## ONE CLASS SVM TRAINING ##
+    print("Training OneClassSVM...")
+    clf = svm.OneClassSVM(gamma="auto")
+    clf.fit(validation_data)
 
-        evaluation_results.append(
-            ["ISO-F", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-        )
+    predictions = clf.predict(validation_data)
 
-        ## LOCAL OUTLIER FACTOR ##
-        print("Training Local Outlier Factor...")
-        clf = LocalOutlierFactor(novelty=True)
-        clf.fit(validation_data)
+    tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-        predictions = clf.predict(validation_data)
+    evaluation_results.append(
+      ["OC-SVM", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+    )
 
-        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+    ## ISOLATION FOREST TRAINING ##
+    print("Training Isolation Forest...")
+    clf = IsolationForest(random_state=0)
+    clf.fit(validation_data)
 
-        evaluation_results.append(
-            ["LOC-OF", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-        )
+    predictions = clf.predict(validation_data)
 
-        ## ROBUST COVARIANCE ##
-        print("Training Robust Covariance...")
-        clf = EllipticEnvelope()
-        clf.fit(validation_data)
+    tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-        predictions = clf.predict(validation_data)
+    evaluation_results.append(
+      ["ISO-F", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+    )
 
-        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+    ## LOCAL OUTLIER FACTOR ##
+    print("Training Local Outlier Factor...")
+    clf = LocalOutlierFactor(novelty=True)
+    clf.fit(validation_data)
 
-        evaluation_results.append(
-            ["ROB-COV", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-        )
+    predictions = clf.predict(validation_data)
 
-        ## Algorithms from this point onwards need mapping of 0 to 1 and 1 to -1
+    tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-        ## COPOD ##
-        print("Training ABOD...")
-        clf = ABOD()
-        clf.fit(validation_data)
+    evaluation_results.append(
+      ["LOC-OF", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+    )
 
-        predictions = np.array(clf.predict(validation_data))
-        predictions = np.where(predictions==1, -1, predictions)
-        predictions = np.where(predictions==0, 1, predictions)
+    ## ROBUST COVARIANCE ##
+    print("Training Robust Covariance...")
+    clf = EllipticEnvelope()
+    clf.fit(validation_data)
 
-        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+    predictions = clf.predict(validation_data)
 
-        evaluation_results.append(
-            ["ABOD", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-        )
+    tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-        ## COPOD ##
-        print("Training COPOD...")
-        clf = COPOD()
-        clf.fit(validation_data)
+    evaluation_results.append(
+      ["ROB-COV", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+    )
 
-        predictions = np.array(clf.predict(validation_data))
-        predictions = np.where(predictions==1, -1, predictions)
-        predictions = np.where(predictions==0, 1, predictions)
+    ## Algorithms from this point onwards need mapping of 0 to 1 and 1 to -1
 
-        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+    ## COPOD ##
+    print("Training ABOD...")
+    clf = ABOD()
+    clf.fit(validation_data)
 
-        evaluation_results.append(
-            ["COPOD", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-        )
+    predictions = np.array(clf.predict(validation_data))
+    predictions = np.where(predictions==1, -1, predictions)
+    predictions = np.where(predictions==0, 1, predictions)
 
-        ## VAE ##
-        print("Training VAE...")
-        clf = VAE(encoder_neurons=layers, decoder_neurons=layers.reverse())
-        clf.fit(validation_data)
+    tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-        predictions = np.array(clf.predict(validation_data))
-        predictions = np.where(predictions==1, -1, predictions)
-        predictions = np.where(predictions==0, 1, predictions)
+    evaluation_results.append(
+      ["ABOD", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+    )
 
-        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+    ## COPOD ##
+    print("Training COPOD...")
+    clf = COPOD()
+    clf.fit(validation_data)
 
-        evaluation_results.append(
-            ["VAE", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-        )
+    predictions = np.array(clf.predict(validation_data))
+    predictions = np.where(predictions==1, -1, predictions)
+    predictions = np.where(predictions==0, 1, predictions)
 
-        ## MCD ##
-        print("Training MCD...")
-        clf = MCD()
-        clf.fit(validation_data)
+    tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-        predictions = np.array(clf.predict(validation_data))
-        predictions = np.where(predictions==1, -1, predictions)
-        predictions = np.where(predictions==0, 1, predictions)
+    evaluation_results.append(
+      ["COPOD", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+    )
 
-        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+    ## VAE ##
+    print("Training VAE...")
+    clf = VAE(encoder_neurons=layers, decoder_neurons=layers.reverse())
+    clf.fit(validation_data)
 
-        evaluation_results.append(
-            ["MCD", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-        )
+    predictions = np.array(clf.predict(validation_data))
+    predictions = np.where(predictions==1, -1, predictions)
+    predictions = np.where(predictions==0, 1, predictions)
 
-        ## SO_GAAL ##
-        print("Training SO_GAAL...")
-        clf = SO_GAAL()
-        clf.fit(validation_data)
+    tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-        predictions = np.array(clf.predict(validation_data))
-        predictions = np.where(predictions==1, -1, predictions)
-        predictions = np.where(predictions==0, 1, predictions)
+    evaluation_results.append(
+      ["VAE", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+    )
 
-        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+    ## MCD ##
+    print("Training MCD...")
+    clf = MCD()
+    clf.fit(validation_data)
 
-        evaluation_results.append(
-            ["SO_GAAL", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-        )
+    predictions = np.array(clf.predict(validation_data))
+    predictions = np.where(predictions==1, -1, predictions)
+    predictions = np.where(predictions==0, 1, predictions)
 
-        ## MO_GAAL ##
-        print("Training MO_GAAL...")
-        clf = MO_GAAL()
-        clf.fit(validation_data)
+    tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-        predictions = np.array(clf.predict(validation_data))
-        predictions = np.where(predictions==1, -1, predictions)
-        predictions = np.where(predictions==0, 1, predictions)
+    evaluation_results.append(
+      ["MCD", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+    )
 
-        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+    ## SO_GAAL ##
+    print("Training SO_GAAL...")
+    clf = SO_GAAL()
+    clf.fit(validation_data)
 
-        evaluation_results.append(
-            ["MO_GAAL", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-        )
+    predictions = np.array(clf.predict(validation_data))
+    predictions = np.where(predictions==1, -1, predictions)
+    predictions = np.where(predictions==0, 1, predictions)
 
-        ## LSCP ##
-        print("Training LSCP...")
-        clf = LSCP([LOF(), LOF()])
-        clf.fit(validation_data)
+    tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-        predictions = np.array(clf.predict(validation_data))
-        predictions = np.where(predictions==1, -1, predictions)
-        predictions = np.where(predictions==0, 1, predictions)
+    evaluation_results.append(
+      ["SO_GAAL", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+    )
 
-        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+    ## MO_GAAL ##
+    print("Training MO_GAAL...")
+    clf = MO_GAAL()
+    clf.fit(validation_data)
 
-        evaluation_results.append(
-            ["LSCP", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-        )
+    predictions = np.array(clf.predict(validation_data))
+    predictions = np.where(predictions==1, -1, predictions)
+    predictions = np.where(predictions==0, 1, predictions)
 
-        ## LODA ##
-        print("Training LODA...")
-        clf = LODA()
-        clf.fit(validation_data)
+    tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-        predictions = np.array(clf.predict(validation_data))
-        predictions = np.where(predictions==1, -1, predictions)
-        predictions = np.where(predictions==0, 1, predictions)
+    evaluation_results.append(
+      ["MO_GAAL", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+    )
 
-        tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
+    ## LSCP ##
+    print("Training LSCP...")
+    clf = LSCP([LOF(), LOF()])
+    clf.fit(validation_data)
 
-        evaluation_results.append(
-            ["LODA", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-        )
+    predictions = np.array(clf.predict(validation_data))
+    predictions = np.where(predictions==1, -1, predictions)
+    predictions = np.where(predictions==0, 1, predictions)
 
-        ## EVALUATE RESULTS ##
-        print(tabulate(evaluation_results, ["ALGO", "TP", "TN", "FP", "FN", "TPR", "TNR", "PPV", "NPV", "TS", "PT", "ACC", "F1", "MCC"], tablefmt="grid"))
+    tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-        ## DATASET METRICS ##
-        len_training_data_points = len(training_data)
-        len_positive_validations = len(positive_validation_data)
-        len_negative_validations = len(negative_validation_data)
-        len_validations          = len_positive_validations + len_negative_validations
+    evaluation_results.append(
+      ["LSCP", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+    )
 
-        metrics_results = [
-            ["Training Data Points", len_training_data_points],
-            ["# Normal Points", len_positive_validations],
-            ["# Anomalies", len_negative_validations],
-            ["Contamination Percentage", math.floor((len_negative_validations / len_validations) * 100)]
-        ]
+    ## LODA ##
+    print("Training LODA...")
+    clf = LODA()
+    clf.fit(validation_data)
 
-        ## EVALUATE RESULTS ##
-        print(tabulate(metrics_results, ["Metric", "Value"], tablefmt="grid"))
+    predictions = np.array(clf.predict(validation_data))
+    predictions = np.where(predictions==1, -1, predictions)
+    predictions = np.where(predictions==0, 1, predictions)
 
-        if printout:
-            print("Saving results to %s" % (printout))
-            df = pd.DataFrame(evaluation_results)
-            df.to_csv(printout, header=None, index=False)
+    tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
 
-    elif mode == "train":
-        print("Initializing autoencoder...")
-        net = Autoencoder(layers=layers)
-        print(net)
+    evaluation_results.append(
+      ["LODA", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
+    )
 
-        print("Loading training data...")
-        data = pd.DataFrame()
+    ## EVALUATE RESULTS ##
+    print(tabulate(evaluation_results, ["ALGO", "TP", "TN", "FP", "FN", "TPR", "TNR", "PPV", "NPV", "TS", "PT", "ACC", "F1", "MCC"], tablefmt="grid"))
 
-        for i, chunk in enumerate(pd.read_csv(input_file, header=None, chunksize=chunk_size)):
-            print("Reading chunk: %d" % (i+1))
-            print(chunk)
-            data = data.append(chunk)
+    ## DATASET METRICS ##
+    len_training_data_points = len(training_data)
+    len_positive_validations = len(positive_validation_data)
+    len_negative_validations = len(negative_validation_data)
+    len_validations          = len_positive_validations + len_negative_validations
 
-        tensor_data = torch.tensor(data.values).float()
+    metrics_results = [
+      ["Training Data Points", len_training_data_points],
+      ["# Normal Points", len_positive_validations],
+      ["# Anomalies", len_negative_validations],
+      ["Contamination Percentage", math.floor((len_negative_validations / len_validations) * 100)]
+    ]
 
-        input_dimensionality = len(data.columns)
-        print("Input Dimensionality: %d" % (input_dimensionality))
+    ## EVALUATE RESULTS ##
+    print(tabulate(metrics_results, ["Metric", "Value"], tablefmt="grid"))
 
-        if cont:
-            net.load(model_file)
-
-        print("Training...")
-        net.train(tensor_data, epochs=epochs, lr=lr, batch_size=batch_size)
-
-        print("Saving to %s..." % (model_file))
-        net.save(model_file)
+    if printout:
+      print("Saving results to %s" % (printout))
+      df = pd.DataFrame(evaluation_results)
+      df.to_csv(printout, header=None, index=False)
