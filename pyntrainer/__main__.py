@@ -99,7 +99,7 @@ if __name__ == '__main__':
       net.load(model_file)
 
     print("Training...")
-    net.train(tensor_data, epochs=epochs, lr=lr, batch_size=batch_size)
+    net.fit(tensor_data, epochs=epochs, lr=lr, batch_size=batch_size)
 
     print("Saving to %s..." % (model_file))
     net.save(model_file)
