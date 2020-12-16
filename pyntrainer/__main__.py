@@ -80,6 +80,7 @@ if __name__ == '__main__':
   if mode == "train":
     print("Initializing autoencoder...")
     net = Autoencoder(layers=layers)
+    net.to(device)
     print(net)
 
     print("Loading training data...")
@@ -92,7 +93,7 @@ if __name__ == '__main__':
 
     tensor_data = torch.tensor(data.values).float()
 
-    input_dimensionality = len(data.columns)
+    input_dimensionality = len(data.columns) - 1
     print("Input Dimensionality: %d" % (input_dimensionality))
 
     if cont:

@@ -37,6 +37,8 @@ class Autoencoder(nn.Module):
       self.encoding_layers.append(nn.Linear(layers[i], layers[i+1]))
       self.decoding_layers.append(nn.Linear(reversed_layers[i], reversed_layers[i+1]))
 
+    self.errs = []
+
   def encode(self, x):
     for i in range(len(self.encoding_layers)):
       x = F.relu(self.encoding_layers[i](x))
@@ -76,12 +78,9 @@ class Autoencoder(nn.Module):
     self.optimal_threshold = state['optimal_threshold']
 
   def errors(self, x):
-    mu_tensor = x.mean()
-
-    print(mu_tensor)
     x_hat = self.forward(x)
 
-    err = (x_hat - x + (x_hat - mu_tensor)).pow(2).sum(dim=1).sqrt()
+    err = (x_hat - x).pow(2).sum(dim=1).sqrt()
 
     return err.detach().cpu().numpy()
 
@@ -134,6 +133,9 @@ class Autoencoder(nn.Module):
     return self.optimal_threshold
 
   def fit(self, x, epochs=100, lr=0.005, batch_size=5, with_thresholding=True):
+    # Reset errors to empty list
+    self.errs = []
+
     data = AbstractDataset(x)
     dataloader = DataLoader(dataset=data, batch_size=batch_size, shuffle=True, num_workers=4)
 
@@ -156,7 +158,11 @@ class Autoencoder(nn.Module):
         self.optimizer.step()
 
       curr_loss = curr_loss / num_iterations
+
+      self.errs.append(curr_loss.detach())
       print("=> Epoch: %i\tLoss: %0.5f" % (epoch + 1, curr_loss.item()))
+
+      # Append to errors array
 
     if with_thresholding:
       print("Setting optimal threshold...")
