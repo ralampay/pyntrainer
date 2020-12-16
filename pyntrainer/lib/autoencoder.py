@@ -76,9 +76,12 @@ class Autoencoder(nn.Module):
     self.optimal_threshold = state['optimal_threshold']
 
   def errors(self, x):
+    mu_tensor = x.mean()
+
+    print(mu_tensor)
     x_hat = self.forward(x)
 
-    err = (x_hat - x).pow(2).sum(dim=1).sqrt()
+    err = (x_hat - x + (x_hat - mu_tensor)).pow(2).sum(dim=1).sqrt()
 
     return err.detach().cpu().numpy()
 
@@ -130,7 +133,7 @@ class Autoencoder(nn.Module):
 
     return self.optimal_threshold
 
-  def train(self, x, epochs=100, lr=0.005, batch_size=5, with_thresholding=True):
+  def fit(self, x, epochs=100, lr=0.005, batch_size=5, with_thresholding=True):
     data = AbstractDataset(x)
     dataloader = DataLoader(dataset=data, batch_size=batch_size, shuffle=True, num_workers=4)
 
@@ -140,6 +143,7 @@ class Autoencoder(nn.Module):
 
     for epoch in range(epochs):
       curr_loss = 0
+
       for i, (inputs, labels) in enumerate(dataloader):
         inputs, labels = inputs.to(self.device), labels.to(self.device)
         self.optimizer.zero_grad()
