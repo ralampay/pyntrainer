@@ -250,12 +250,12 @@ if __name__ == '__main__':
 
       ## SO_GAAL ##
       print("Training SO_GAAL...")
-      result = train_and_evaluate_classifier("SO_GAAL", SO_GAAL(), validation_data, validation_labels)
+      result = train_and_evaluate_classifier("SO_GAAL", SO_GAAL(lr_d=lr, stop_epochs=epochs), validation_data, validation_labels)
       evaluation_results.append(result)
 
       ## MO_GAAL ##
       print("Training MO_GAAL...")
-      result = train_and_evaluate_classifier("MO_GAAL", MO_GAAL(), validation_data, validation_labels)
+      result = train_and_evaluate_classifier("MO_GAAL", MO_GAAL(lr_d=lr, stop_epochs=epochs), validation_data, validation_labels)
       evaluation_results.append(result)
 
     ## EVALUATE RESULTS ##

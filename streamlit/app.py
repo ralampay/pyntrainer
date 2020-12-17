@@ -20,6 +20,7 @@ def file_selector(folder_path='./data', label='Select File'):
   return os.path.join(folder_path, selected_filename)
 
 st.title('Autoencoder Reconstruction Visualizer')
+st.markdown("## Anomaly Detector")
 
 input_file  = file_selector(label='Select Input File')
 
@@ -98,7 +99,9 @@ if st.button('Start Process'):
   predictions = net.predict(validation_data)
 
   # Display reconstructions
+  datapoints = []
   for i in range(len(predictions)):
+    datapoints.append(i)
     temp_data = np.hstack((
                   np.array(x_hat[i].data).reshape(len(x_hat[i]), 1),
                   np.array(validation_data[i].data).reshape(len(validation_data[i]), 1)
@@ -107,5 +110,11 @@ if st.button('Start Process'):
     temp  = pd.DataFrame(temp_data, columns=['Reconstructed', 'Actual'])
     classification = "Normal" if predictions[i] == 1 else "Anomaly" 
 
-    st.markdown("### Data Point %d: %s" % (i+1, classification))
+    st.markdown(" Data Point %d" % (i+1))
+
+    if validation_labels[i] == predictions[i]:
+      st.success("Prection: %s Actual: %s" % ("Normal" if validation_labels[i] == 1 else "Anoamly", "Normal" if predictions[i] == 1 else "Anomaly"))
+    else:
+      st.error("Prection: %s Actual: %s" % ("Normal" if validation_labels[i] == 1 else "Anoamly", "Normal" if predictions[i] == 1 else "Anomaly"))
+    
     st.line_chart(temp)
