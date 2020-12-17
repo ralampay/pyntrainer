@@ -14,5 +14,10 @@ logs/
 
 *.tar
 *.pth
+*.spec
 
 data/*.csv
+
+environment.yml
+
+build/
