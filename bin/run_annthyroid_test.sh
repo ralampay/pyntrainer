@@ -1,6 +1,3 @@
-# Activate the research environment in conda
-conda activate research
-
 # DATASET: Annthyroid
 # Layers: 21 18
 # Batch Size: 5
