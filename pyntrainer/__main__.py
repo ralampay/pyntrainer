@@ -126,7 +126,7 @@ if __name__ == '__main__':
     positive_validation_data = positive_data.drop(training_data.index)
 
     if neg_cont and neg_cont > 0:
-      print("Negative Contamination: %0.2f" % (neg_cont))
+      print("Negative Contamination: %0.4f" % (neg_cont))
       num_negative = math.floor(neg_cont * (len(negative_data) + len(positive_validation_data)))
       negative_data = data.sample(frac=1, random_state=200)[data[len(data.columns) - 1] == -1].iloc[:num_negative,:len(data.columns) - 1]
 
