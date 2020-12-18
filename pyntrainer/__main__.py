@@ -33,7 +33,7 @@ from pyod.models.lscp import LSCP
 from pyod.models.loda import LODA
 from pyod.models.lof import LOF
 from pyod.models.cblof import CBLOF
-from pyod.models.loci import LOCI
+from pyod.models.hbos import HBOS
 from pyod.models.sos import SOS
 
 if __name__ == '__main__':
@@ -237,9 +237,9 @@ if __name__ == '__main__':
       result = train_and_evaluate_classifier("CBLOF", CBLOF(), validation_data, validation_labels)
       evaluation_results.append(result)
 
-      ## LOCI ##
-      print("Training LOCI...")
-      result = train_and_evaluate_classifier("LOCI", LOCI(), validation_data, validation_labels)
+      ## HBOS ##
+      print("Training HBOS...")
+      result = train_and_evaluate_classifier("HBOS", HBOS(), validation_data, validation_labels)
       evaluation_results.append(result)
 
     elif eval_cat == "nn":
