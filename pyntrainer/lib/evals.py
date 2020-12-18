@@ -13,7 +13,8 @@ PYOD_ALGOS = [
   "LOCI",
   "SOS",
   "ABOD",
-  "HBOS"
+  "HBOS",
+  "COPOD"
 ]
 
 def train_and_evaluate_classifier(name, clf, validation_data, validation_labels):
