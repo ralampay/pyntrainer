@@ -23,3 +23,6 @@ data/*.png
 environment.yml
 
 build/
+
+# Ignore jupyter notebook checkpoints
+notebooks/.ipynb_checkpoints/
