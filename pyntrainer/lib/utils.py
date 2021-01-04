@@ -1,6 +1,34 @@
+import os
 import numpy as np
 from sklearn.metrics import confusion_matrix
 from math import sqrt
+import cv2
+from torch import tensor
+import torch
+import torch.nn as nn
+
+def load_images_from_dir(dir, img_width, img_height):
+  images = []
+
+  for filename in os.listdir(dir):
+    img = cv2.imread(os.path.join(dir, filename))
+    img = cv2.resize(img, (img_width, img_height))
+    img = img / 255
+
+    if img is not None:
+      images.append(img)
+
+  return images
+
+def cv2_to_tensor(images):
+  x = []
+
+  for img in images:
+    img_tensor = torch.tensor(img.transpose((2,0,1))).float()
+    d = img_tensor.detach().numpy()
+    x.append(d)
+
+  return torch.tensor(x).float()
 
 def performance_metrics(validation_labels, predictions):
   tn, fp, fn, tp = np.array(confusion_matrix(validation_labels, predictions).ravel(), dtype=np.float64)

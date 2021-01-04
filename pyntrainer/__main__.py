@@ -3,6 +3,7 @@ import argparse
 import os
 import math
 sys.path.append(os.path.join(os.path.dirname(__file__), '.'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 import numpy as np
 import pandas as pd
@@ -11,7 +12,10 @@ import torch
 from tabulate import tabulate
 
 from lib.autoencoder import Autoencoder
+from lib.cnn_autoencoder import CnnAutoencoder
 from lib.utils import performance_metrics
+from lib.utils import load_images_from_dir
+from lib.utils import cv2_to_tensor
 from lib.evals import train_and_evaluate_classifier
 
 # Existing implementations of anomaly detectors
@@ -37,10 +41,11 @@ from pyod.models.hbos import HBOS
 from pyod.models.sos import SOS
 
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description="PynTrainer: Stochastic Autoencoder trainer program")
+  parser = argparse.ArgumentParser(description="PynTrainer: Autoencoder trainer program")
 
-  parser.add_argument("--mode", help="Mode to be used", choices=["train", "eval"], type=str, default="eval")
+  parser.add_argument("--mode", help="Mode to be used", choices=["train", "eval", "train-cnn"], type=str, default="eval")
   parser.add_argument("--input-file", help="Input csv file for training")
+  parser.add_argument("--input-dir", help='Input directory for images for CNN', type=str)
   parser.add_argument("--model-file", help="Output model file", type=str, const=1, nargs='?', default="output.pth.tar")
   parser.add_argument("--chunk-size", help="Chunk size for reading large files", type=int, const=1, nargs='?', default=5000)
   parser.add_argument("--layers", help='Layers for autoencoder', type=int, nargs='+')
@@ -52,22 +57,35 @@ if __name__ == '__main__':
   parser.add_argument("--add-syn", help='Add synthetic noise', type=bool, default=True)
   parser.add_argument("--printout", help='File for results of eval (csv)', type=str)
   parser.add_argument("--eval-cat", help='Category of algos for evaluation', choices=["linear", "prob", "nn", "ensemble", "proximity", "none"], type=str, default="none")
+  parser.add_argument("--padding", help='Padding for CNN', type=int, default=1)
+  parser.add_argument("--kernel-size", help='Kernel size for CNN', type=int, default=3)
+  parser.add_argument("--num-channels", help='Num channels for CNN', type=int, default=3)
+  parser.add_argument("--img-width", help='Image width for CNN', type=int, default=100)
+  parser.add_argument("--img-height", help='Image height for CNN', type=int, default=100)
+  parser.add_argument("--scale", help='Scale for CNN', type=int, default=2)
 
   args = parser.parse_args()
 
-  input_file  = args.input_file
-  model_file  = args.model_file
-  chunk_size  = args.chunk_size
-  layers      = args.layers
-  mode        = args.mode
-  lr          = args.lr
-  epochs      = args.epochs
-  batch_size  = args.batch_size
-  cont        = args.cont
-  add_syn     = args.add_syn
-  neg_cont    = args.neg_cont
-  printout    = args.printout
-  eval_cat    = args.eval_cat
+  input_file    = args.input_file
+  input_dir     = args.input_dir
+  model_file    = args.model_file
+  chunk_size    = args.chunk_size
+  layers        = args.layers
+  mode          = args.mode
+  lr            = args.lr
+  epochs        = args.epochs
+  batch_size    = args.batch_size
+  cont          = args.cont
+  add_syn       = args.add_syn
+  neg_cont      = args.neg_cont
+  printout      = args.printout
+  eval_cat      = args.eval_cat
+  padding       = args.padding
+  kernel_size   = args.kernel_size
+  num_channels  = args.num_channels
+  img_width     = args.img_width
+  img_height    = args.img_height
+  scale         = args.scale
 
   if torch.cuda.is_available():
     dev = "cuda:0"
@@ -77,7 +95,26 @@ if __name__ == '__main__':
 
   device = torch.device(dev)
 
-  if mode == "train":
+  if mode == "train-cnn":
+    print("Initializing CNN autoencoder...")
+    net = CnnAutoencoder(scale=scale, channel_maps=layers, padding=padding, kernel_size=kernel_size, num_channels=num_channels, img_width=img_width, img_height=img_height, device=dev)
+    net.to(device)
+    print(net)
+
+    print("Loading images...")
+    tensor_data = cv2_to_tensor(load_images_from_dir(input_dir, img_width, img_height))
+
+    if cont:
+      print("Loading model_file %s..." % (model_file))
+      net.load(model_file)
+
+    print("Training...")
+    net.fit(tensor_data, epochs=epochs, lr=lr, batch_size=batch_size)
+
+    print("Saving to %s..." % (model_file))
+    net.save(model_file)
+
+  elif mode == "train":
     print("Initializing autoencoder...")
     net = Autoencoder(layers=layers)
     net.to(device)
@@ -97,6 +134,7 @@ if __name__ == '__main__':
     print("Input Dimensionality: %d" % (input_dimensionality))
 
     if cont:
+      print("Loading model_file %s..." % (model_file))
       net.load(model_file)
 
     print("Training...")

@@ -17,6 +17,8 @@ logs/
 *.spec
 
 data/*.csv
+data/*.jpg
+data/*.png
 
 environment.yml
 
