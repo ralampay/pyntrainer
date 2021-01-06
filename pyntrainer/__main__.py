@@ -43,9 +43,10 @@ from pyod.models.sos import SOS
 def main():
   parser = argparse.ArgumentParser(description="PynTrainer: Autoencoder trainer program")
 
-  parser.add_argument("--mode", help="Mode to be used", choices=["train", "eval", "train-cnn"], type=str, default="eval")
+  parser.add_argument("--mode", help="Mode to be used", choices=["train", "eval", "train-cnn", "eval-cnn"], type=str, default="eval")
   parser.add_argument("--input-file", help="Input csv file for training")
   parser.add_argument("--input-dir", help='Input directory for images for CNN', type=str)
+  parser.add_argument("--eval-dir", help='Evaluation directory for images for CNN', type=str)
   parser.add_argument("--model-file", help="Output model file", type=str, const=1, nargs='?', default="output.pth.tar")
   parser.add_argument("--chunk-size", help="Chunk size for reading large files", type=int, const=1, nargs='?', default=5000)
   parser.add_argument("--layers", help='Layers for autoencoder', type=int, nargs='+')
@@ -68,6 +69,7 @@ def main():
 
   input_file    = args.input_file
   input_dir     = args.input_dir
+  eval_dir      = args.eval_dir
   model_file    = args.model_file
   chunk_size    = args.chunk_size
   layers        = args.layers
@@ -113,6 +115,32 @@ def main():
 
     print("Saving to %s..." % (model_file))
     net.save(model_file)
+
+  elif mode == 'eval-cnn':
+    print("Initializing CNN autoencoder...")
+    net = CnnAutoencoder(scale=scale, channel_maps=layers, padding=padding, kernel_size=kernel_size, num_channels=num_channels, img_width=img_width, img_height=img_height, device=dev)
+    net.to(device)
+    print(net)
+
+    if cont:
+      print("Loading model_file %s..." % (model_file))
+      net.load(model_file)
+
+    print("Loading images from %s..." % (input_dir))
+    tensor_data = cv2_to_tensor(load_images_from_dir(input_dir, img_width, img_height))
+
+    print("Training...")
+    net.fit(tensor_data, epochs=epochs, lr=lr, batch_size=batch_size)
+
+    print("Loading images for evaluation from %s..." % (eval_dir))
+    eval_data = cv2_to_tensor(load_images_from_dir(eval_dir, img_width, img_height))
+
+    print("Predicting...")
+    y = net.predict(eval_data)
+
+    for i, filename in enumerate(os.listdir(eval_dir)):
+      f = os.path.join(eval_dir, filename)
+      print("File: %s Prediction: %s" % (f, "NORMAL" if y[i] == 1 else "ANOMALY"))
 
   elif mode == "train":
     print("Initializing autoencoder...")
