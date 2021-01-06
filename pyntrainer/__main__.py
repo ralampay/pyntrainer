@@ -40,7 +40,7 @@ from pyod.models.cblof import CBLOF
 from pyod.models.hbos import HBOS
 from pyod.models.sos import SOS
 
-if __name__ == '__main__':
+def main():
   parser = argparse.ArgumentParser(description="PynTrainer: Autoencoder trainer program")
 
   parser.add_argument("--mode", help="Mode to be used", choices=["train", "eval", "train-cnn"], type=str, default="eval")
@@ -321,3 +321,6 @@ if __name__ == '__main__':
       print("Saving results to %s" % (printout))
       df = pd.DataFrame(evaluation_results)
       df.to_csv(printout, header=None, index=False)
+
+if __name__ == '__main__':
+  main()
