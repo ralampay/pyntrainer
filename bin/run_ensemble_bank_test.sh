@@ -1,4 +1,4 @@
-# Ensemble (ensemble)
+# ensemble
 python -m pyntrainer --mode eval --input-file https://happy-research.s3-ap-southeast-1.amazonaws.com/bank.csv --layers 62 55 --eval-cat ensemble --batch-size 1000 --neg-cont 0.002 --printout ~/results/ensemble/bank-1-1.csv && \
 python -m pyntrainer --mode eval --input-file https://happy-research.s3-ap-southeast-1.amazonaws.com/bank.csv --layers 62 55 --eval-cat ensemble --batch-size 1000 --neg-cont 0.002 --printout ~/results/ensemble/bank-1-2.csv && \
 python -m pyntrainer --mode eval --input-file https://happy-research.s3-ap-southeast-1.amazonaws.com/bank.csv --layers 62 55 --eval-cat ensemble --batch-size 1000 --neg-cont 0.002 --printout ~/results/ensemble/bank-1-3.csv && \
