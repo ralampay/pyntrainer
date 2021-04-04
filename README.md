@@ -2,6 +2,12 @@
 
 Autoencoder training program
 
+## Installing Dependencies (via `pip`)
+
+```
+pip install -r requirements.txt
+```
+
 ## Installing Dependencies (via `conda`)
 
 1. Rename `environment.yml.dist` to `environment.yml`
@@ -20,6 +26,14 @@ pip install .
 
 ```
 pip uninstall pyntrainer
+```
+
+## Sample Usage for CNN-Autoencoder Training
+
+Trains a CNN based autoencoder with `BCELoss` function and auto-thresholding. Outputs a model (pth) file.
+
+```
+python -m pyntrainer --mode train-cnn --input-dir [input directory of images] --layers [array of numbers representing channel maps i.e. 3 16 8] --epochs 100 --batch-size 1 --img-width 50 --img-height 50 --model-file [file.pth]
 ```
 
 ## Sample Usage for CNN-Autoencoder Training and Evaluation

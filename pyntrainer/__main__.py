@@ -26,6 +26,9 @@ from sklearn.covariance import EllipticEnvelope
 
 import csv
 
+# Modules
+from modules.train_cnn import TrainCnn as ModuleTrainCnn
+
 # https://github.com/yzhao062/pyod
 from pyod.models.abod import ABOD
 from pyod.models.copod import COPOD
@@ -47,7 +50,7 @@ def main():
   parser.add_argument("--input-file", help="Input csv file for training")
   parser.add_argument("--input-dir", help='Input directory for images for CNN', type=str)
   parser.add_argument("--eval-dir", help='Evaluation directory for images for CNN', type=str)
-  parser.add_argument("--model-file", help="Output model file", type=str, const=1, nargs='?', default="output.pth.tar")
+  parser.add_argument("--model-file", help="Output model file (i.e. pth file)", type=str, const=1, nargs='?', default="output.pth.tar")
   parser.add_argument("--chunk-size", help="Chunk size for reading large files", type=int, const=1, nargs='?', default=5000)
   parser.add_argument("--layers", help='Layers for autoencoder', type=int, nargs='+')
   parser.add_argument("--lr", help='Learning rate', type=float, default=0.001)
@@ -98,23 +101,26 @@ def main():
   device = torch.device(dev)
 
   if mode == "train-cnn":
-    print("Initializing CNN autoencoder...")
-    net = CnnAutoencoder(scale=scale, channel_maps=layers, padding=padding, kernel_size=kernel_size, num_channels=num_channels, img_width=img_width, img_height=img_height, device=dev)
-    net.to(device)
-    print(net)
+    params = {
+      'scale':        scale,
+      'channel_maps': layers,
+      'padding':      padding,
+      'kernel_size':  kernel_size,
+      'num_channels': num_channels,
+      'img_width':    img_width,
+      'img_height':   img_height,
+      'device':       dev,
+      'input_dir':    input_dir,
+      'cont':         cont,
+      'model_file':   model_file,
+      'epochs':       epochs,
+      'lr':           lr,
+      'batch_size':   batch_size
+    }
 
-    print("Loading images...")
-    tensor_data = cv2_to_tensor(load_images_from_dir(input_dir, img_width, img_height))
+    module  = ModuleTrainCnn(params=params)
 
-    if cont:
-      print("Loading model_file %s..." % (model_file))
-      net.load(model_file)
-
-    print("Training...")
-    net.fit(tensor_data, epochs=epochs, lr=lr, batch_size=batch_size)
-
-    print("Saving to %s..." % (model_file))
-    net.save(model_file)
+    module.execute()
 
   elif mode == 'eval-cnn':
     print("Initializing CNN autoencoder...")

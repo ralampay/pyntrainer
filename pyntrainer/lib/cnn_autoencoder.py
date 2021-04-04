@@ -113,20 +113,28 @@ class CnnAutoencoder(nn.Module):
 
   def save(self, filename):
     state = {
-      'state_dict': self.state_dict(), 
-      'optimizer': self.optimizer.state_dict(), 
-      'optimal_threshold': self.optimal_threshold
+      'state_dict':         self.state_dict(), 
+      'optimizer':          self.optimizer.state_dict(), 
+      'optimal_threshold':  self.optimal_threshold,
+      'channel_maps':       self.channel_maps
     }
 
     torch.save(state, filename)
+  
+  def flatten(self, x):
+    x = self.conv(x)
+    x = x.view(x.size(0), -1)
+
+    return x
 
   def load(self, filename):
     state = torch.load(filename)
 
     self.load_state_dict(state['state_dict'])
 
-    self.optimizer         = state['optimizer']
-    self.optimal_threshold = state['optimal_threshold']
+    self.optimizer          = state['optimizer']
+    self.optimal_threshold  = state['optimal_threshold']
+    self.channel_maps       = state['channel_maps']
 
   def fit(self, x, epochs=100, lr=0.001, batch_size=5, with_thresholding=True):
     # Reset errors to empty list
