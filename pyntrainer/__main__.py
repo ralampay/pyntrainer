@@ -28,6 +28,7 @@ import csv
 
 # Modules
 from modules.train_cnn import TrainCnn as ModuleTrainCnn
+from modules.eval_cnn import EvalCnn as ModuleEvalCnn
 
 # https://github.com/yzhao062/pyod
 from pyod.models.abod import ABOD
@@ -123,30 +124,27 @@ def main():
     module.execute()
 
   elif mode == 'eval-cnn':
-    print("Initializing CNN autoencoder...")
-    net = CnnAutoencoder(scale=scale, channel_maps=layers, padding=padding, kernel_size=kernel_size, num_channels=num_channels, img_width=img_width, img_height=img_height, device=dev)
-    net.to(device)
-    print(net)
+    params = {
+      'scale':        scale,
+      'channel_maps': layers,
+      'padding':      padding,
+      'kernel_size':  kernel_size,
+      'num_channels': num_channels,
+      'img_width':    img_width,
+      'img_height':   img_height,
+      'device':       dev,
+      'input_dir':    input_dir,
+      'cont':         cont,
+      'model_file':   model_file,
+      'epochs':       epochs,
+      'lr':           lr,
+      'batch_size':   batch_size,
+      'eval_dir':     eval_dir
+    }
 
-    if cont:
-      print("Loading model_file %s..." % (model_file))
-      net.load(model_file)
+    module  = ModuleEvalCnn(params=params)
 
-    print("Loading images from %s..." % (input_dir))
-    tensor_data = cv2_to_tensor(load_images_from_dir(input_dir, img_width, img_height))
-
-    print("Training...")
-    net.fit(tensor_data, epochs=epochs, lr=lr, batch_size=batch_size)
-
-    print("Loading images for evaluation from %s..." % (eval_dir))
-    eval_data = cv2_to_tensor(load_images_from_dir(eval_dir, img_width, img_height))
-
-    print("Predicting...")
-    y = net.predict(eval_data)
-
-    for i, filename in enumerate(os.listdir(eval_dir)):
-      f = os.path.join(eval_dir, filename)
-      print("File: %s Prediction: %s" % (f, "NORMAL" if y[i] == 1 else "ANOMALY"))
+    module.execute()
 
   elif mode == "train":
     print("Initializing autoencoder...")
