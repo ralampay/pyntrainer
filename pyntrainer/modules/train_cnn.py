@@ -45,6 +45,10 @@ class TrainCnn:
             device=self.device
           )
 
+    if self.cont:
+      print("Loading model_file %s..." % (model_file))
+      net.load(model_file)
+
     print("Loading images...")
 
     tensor_data = cv2_to_tensor(
