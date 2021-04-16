@@ -64,7 +64,9 @@ class Autoencoder(nn.Module):
     state = {
       'state_dict': self.state_dict(), 
       'optimizer': self.optimizer.state_dict(), 
-      'optimal_threshold': self.optimal_threshold
+      'optimal_threshold': self.optimal_threshold,
+      'encoding_layers': self.encoding_layers,
+      'decoding_layers': self.decoding_layers
     }
 
     torch.save(state, filename)

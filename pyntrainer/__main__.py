@@ -29,6 +29,7 @@ import csv
 # Modules
 from modules.train_cnn import TrainCnn as ModuleTrainCnn
 from modules.eval_cnn import EvalCnn as ModuleEvalCnn
+from modules.train_autoencoder import TrainAutoencoder as ModuleTrainAutoencoder
 
 # https://github.com/yzhao062/pyod
 from pyod.models.abod import ABOD
@@ -147,33 +148,21 @@ def main():
     module.execute()
 
   elif mode == "train":
-    print("Initializing autoencoder...")
-    net = Autoencoder(layers=layers)
-    net.to(device)
-    print(net)
+    params = {
+      'layers':     layers,
+      'epochs':     epochs,
+      'lr':         lr,
+      'batch_size': batch_size,
+      'device':     dev,
+      'cont':       cont,
+      'model_file': model_file,
+      'input_file': input_file,
+      'chunk_size': chunk_size
+    }
 
-    print("Loading training data...")
-    data = pd.DataFrame()
+    module = ModuleTrainCnn(params=params)
 
-    for i, chunk in enumerate(pd.read_csv(input_file, header=None, chunksize=chunk_size)):
-      print("Reading chunk: %d" % (i+1))
-      print(chunk)
-      data = data.append(chunk)
-
-    tensor_data = torch.tensor(data.values).float()
-
-    input_dimensionality = len(data.columns) - 1
-    print("Input Dimensionality: %d" % (input_dimensionality))
-
-    if cont:
-      print("Loading model_file %s..." % (model_file))
-      net.load(model_file)
-
-    print("Training...")
-    net.fit(tensor_data, epochs=epochs, lr=lr, batch_size=batch_size)
-
-    print("Saving to %s..." % (model_file))
-    net.save(model_file)
+    module.execute()
 
   elif mode == "eval":
     evaluation_results = []
