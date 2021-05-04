@@ -25,6 +25,7 @@ class TrainAutoencoder:
     # Process parameters
     self.input_file = params.get('input_file')
     self.chunk_size = params.get('chunk_size')
+    self.cf_file    = params.get('cf_file')
 
   def execute(self):
     print("Initializing autoencoder...")
@@ -36,21 +37,22 @@ class TrainAutoencoder:
     data = pd.DataFrame()
 
     for i, chunk in enumerate(pd.read_csv(self.input_file, header=None, chunksize=self.chunk_size)):
-      print("Reading chunk: %d" % (i+1))
+      print("Reading chunk: {}".format(i+1))
       print(chunk)
       data = data.append(chunk)
 
     tensor_data = torch.tensor(data.values).float()
+    print(tensor_data)
 
     input_dimensionality = len(data.columns) - 1
-    print("Input Dimensionality: %d" % (input_dimensionality))
+    print("Input Dimensionality: {}".format(input_dimensionality))
 
     if self.cont:
-      print("Loading model_file %s..." % (self.model_file))
+      print("Loading model_file {}...".format(self.model_file))
       net.load(self.model_file)
 
     print("Training...")
     net.fit(tensor_data, epochs=self.epochs, lr=self.lr, batch_size=self.batch_size)
 
-    print("Saving to %s..." % (self.model_file))
+    print("Saving to {}...".format(self.model_file))
     net.save(self.model_file)

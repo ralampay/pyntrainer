@@ -9,47 +9,23 @@ import numpy as np
 import pandas as pd
 from torch import tensor
 import torch
-from tabulate import tabulate
 
 from lib.autoencoder import Autoencoder
 from lib.cnn_autoencoder import CnnAutoencoder
-from lib.utils import performance_metrics
-from lib.utils import load_images_from_dir
-from lib.utils import cv2_to_tensor
-from lib.evals import train_and_evaluate_classifier
-
-# Existing implementations of anomaly detectors
-from sklearn import svm
-from sklearn.ensemble import IsolationForest
-from sklearn.neighbors import LocalOutlierFactor
-from sklearn.covariance import EllipticEnvelope
-
-import csv
 
 # Modules
 from modules.train_cnn import TrainCnn as ModuleTrainCnn
 from modules.eval_cnn import EvalCnn as ModuleEvalCnn
 from modules.train_autoencoder import TrainAutoencoder as ModuleTrainAutoencoder
-
-# https://github.com/yzhao062/pyod
-from pyod.models.abod import ABOD
-from pyod.models.copod import COPOD
-from pyod.models.vae import VAE
-from pyod.models.mcd import MCD
-from pyod.models.so_gaal import SO_GAAL
-from pyod.models.mo_gaal import MO_GAAL
-from pyod.models.lscp import LSCP
-from pyod.models.loda import LODA
-from pyod.models.lof import LOF
-from pyod.models.cblof import CBLOF
-from pyod.models.hbos import HBOS
-from pyod.models.sos import SOS
+from modules.eval import Eval as ModuleEval
+from modules.train_classify import TrainClassify as ModuleTrainClassify
 
 def main():
-  parser = argparse.ArgumentParser(description="PynTrainer: Autoencoder trainer program")
+  parser = argparse.ArgumentParser(description="PynTrainer: Neural network trainer program")
 
-  parser.add_argument("--mode", help="Mode to be used", choices=["train", "eval", "train-cnn", "eval-cnn"], type=str, default="eval")
+  parser.add_argument("--mode", help="Mode to be used", choices=["train", "eval", "train-cnn", "eval-cnn", "train-classify"], type=str, default="eval")
   parser.add_argument("--input-file", help="Input csv file for training")
+  parser.add_argument("--cf-file", help="Classification csv file for training results")
   parser.add_argument("--input-dir", help='Input directory for images for CNN', type=str)
   parser.add_argument("--eval-dir", help='Evaluation directory for images for CNN', type=str)
   parser.add_argument("--model-file", help="Output model file (i.e. pth file)", type=str, const=1, nargs='?', default="output.pth.tar")
@@ -69,10 +45,12 @@ def main():
   parser.add_argument("--img-width", help='Image width for CNN', type=int, default=100)
   parser.add_argument("--img-height", help='Image height for CNN', type=int, default=100)
   parser.add_argument("--scale", help='Scale for CNN', type=int, default=2)
+  parser.add_argument("--will-reduce", help='Will reduce for Train Classify module', type=bool, default=False)
 
   args = parser.parse_args()
 
   input_file    = args.input_file
+  cf_file       = args.cf_file
   input_dir     = args.input_dir
   eval_dir      = args.eval_dir
   model_file    = args.model_file
@@ -93,6 +71,7 @@ def main():
   img_width     = args.img_width
   img_height    = args.img_height
   scale         = args.scale
+  will_reduce   = args.will_reduce
 
   if torch.cuda.is_available():
     dev = "cuda:0"
@@ -157,191 +136,53 @@ def main():
       'cont':       cont,
       'model_file': model_file,
       'input_file': input_file,
-      'chunk_size': chunk_size
+      'chunk_size': chunk_size,
+      'cf_file':    cf_file
     }
 
-    module = ModuleTrainCnn(params=params)
+    module = ModuleTrainAutoencoder(params=params)
 
     module.execute()
 
   elif mode == "eval":
-    evaluation_results = []
+    params = {
+      'layers':     layers,
+      'neg_cont':   neg_cont,
+      'input_file': input_file,
+      'chunk_size': chunk_size,
+      'device':     device,
+      'add_syn':    add_syn,
+      'epochs':     epochs,
+      'lr':         lr,
+      'batch_size': batch_size,
+      'printout':   printout,
+      'eval_cat':   eval_cat
+    }
 
-    print("Loading training data...")
-    data = pd.DataFrame()
+    module = ModuleEval(params=params)
 
-    for i, chunk in enumerate(pd.read_csv(input_file, header=None, chunksize=chunk_size)):
-      print("Reading chunk: %d" % (i+1))
-      print(chunk)
-      data = data.append(chunk)
+    module.execute()
 
-    input_dimensionality = len(data.columns) - 1
-    print("Input Dimensionality: %d" % (input_dimensionality))
+  elif mode == "train-classify":
+    params = {
+      'layers':       layers,
+      'epochs':       epochs,
+      'lr':           lr,
+      'batch_size':   batch_size,
+      'device':       dev,
+      'cont':         cont,
+      'model_file':   model_file,
+      'input_file':   input_file,
+      'chunk_size':   chunk_size,
+      'cf_file':      cf_file,
+      'cont':         cont,
+      'will_reduce':  will_reduce
+    }
 
-    positive_data = data[data[len(data.columns) - 1] == 1].iloc[:,:len(data.columns) - 1]
-    negative_data = data[data[len(data.columns) - 1] == -1].iloc[:,:len(data.columns) - 1]
+    module = ModuleTrainClassify(params=params)
 
-    training_data            = positive_data.sample(frac=0.70)
-    positive_validation_data = positive_data.drop(training_data.index)
-
-    if neg_cont and neg_cont > 0:
-      print("Negative Contamination: %0.4f" % (neg_cont))
-      num_negative = math.floor(neg_cont * (len(negative_data) + len(positive_validation_data)))
-      negative_data = data.sample(frac=1, random_state=200)[data[len(data.columns) - 1] == -1].iloc[:num_negative,:len(data.columns) - 1]
-
-    negative_validation_data = negative_data.copy()
-
-    temp_positive = positive_validation_data.copy()
-    temp_positive[input_dimensionality] = 1
-
-    temp_negative = negative_data.copy()
-    temp_negative[input_dimensionality] = -1
-
-    validation_data_with_labels = pd.concat([temp_positive, temp_negative], ignore_index=True)
-    validation_data   = validation_data_with_labels.iloc[:,:len(data.columns) - 1]
-    validation_labels = validation_data_with_labels.iloc[:,-1:].values
-
-    # Convert to tensor
-    positive_data   = torch.tensor(positive_data.values).float().to(device)
-    negative_data   = torch.tensor(negative_data.values).float().to(device)
-    training_data   = torch.tensor(training_data.values).float()
-    validation_data = torch.tensor(validation_data.values).float()
-
-    print("Validation Data:")
-    print(validation_data)
-
-    ## AE-D TRAINING ##
-    print("Initializing autoencoder...")
-    net = Autoencoder(layers=layers, device=device, add_syn=add_syn)
-    net.to(device)
-
-    print(net)
-
-    print("Training Stochastic Autoencoder...")
-    net.fit(training_data, epochs=epochs, lr=lr, batch_size=batch_size)
-
-    predictions = net.predict(validation_data)
-
-    tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc = performance_metrics(validation_labels, predictions)
-
-    r = ["AE-D", tp, tn, fp, fn, tpr, tnr, ppv, npv, ts, pt, acc, f1, mcc]
-
-    evaluation_results.append(r)
-
-    print("AE-D Results:")
-    print(tabulate([r], ["ALGO", "TP", "TN", "FP", "FN", "TPR", "TNR", "PPV", "NPV", "TS", "PT", "ACC", "F1", "MCC"], tablefmt="grid"))
-
-    # Convert back to CPU before other methods
-    validation_data = validation_data.cpu()
-
-    # Train only linear classifiers
-    if eval_cat == "linear":
-      print("Initiating training for linear detectors...")
-
-      ## MCD ##
-      print("Training MCD...")
-      result = train_and_evaluate_classifier("MCD", MCD(), validation_data, validation_labels)
-      evaluation_results.append(result)
-
-      ## ROBUST COVARIANCE ##
-      print("Training Robust Covariance...")
-      result = train_and_evaluate_classifier("ROB-COV", EllipticEnvelope(), validation_data, validation_labels)
-      evaluation_results.append(result)
-
-      ## ONE CLASS SVM TRAINING ##
-      print("Training OneClassSVM...")
-      result = train_and_evaluate_classifier("OC-SVM", svm.OneClassSVM(gamma="auto"), validation_data, validation_labels)
-      evaluation_results.append(result)
-
-    elif eval_cat == "prob":
-      ## ABOD ##
-      print("Training ABOD...")
-      result = train_and_evaluate_classifier("ABOD", ABOD(), validation_data, validation_labels)
-      evaluation_results.append(result)
-
-      ## SOS ##
-      print("Training SOS...")
-      result = train_and_evaluate_classifier("SOS", SOS(), validation_data, validation_labels)
-      evaluation_results.append(result)
-
-      ## COPOD ##
-      print("Training COPOD...")
-      result = train_and_evaluate_classifier("COPOD", COPOD(), validation_data, validation_labels)
-      evaluation_results.append(result)
-
-    elif eval_cat == "ensemble":
-      ## ISOLATION FOREST TRAINING ##
-      print("Training Isolation Forest...")
-      result = train_and_evaluate_classifier("ISO-F", IsolationForest(random_state=0), validation_data, validation_labels)
-      evaluation_results.append(result)
-
-      ## LODA ##
-      print("Training LODA...")
-      result = train_and_evaluate_classifier("LODA", LODA(), validation_data, validation_labels)
-      evaluation_results.append(result)
-
-      ## LSCP ##
-      print("Training LSCP...")
-      result = train_and_evaluate_classifier("LSCP", LSCP([LOF(), LOF()]), validation_data, validation_labels)
-      evaluation_results.append(result)
+    module.execute()
     
-    elif eval_cat == "proximity":
-      ## LOCAL OUTLIER FACTOR ##
-      print("Training Local Outlier Factor...")
-      result = train_and_evaluate_classifier("LOC-OF", LocalOutlierFactor(novelty=True), validation_data, validation_labels)
-      evaluation_results.append(result)
-
-      ## CBLOF ##
-      print("Training CBLOF...")
-      result = train_and_evaluate_classifier("CBLOF", CBLOF(), validation_data, validation_labels)
-      evaluation_results.append(result)
-
-      ## HBOS ##
-      print("Training HBOS...")
-      result = train_and_evaluate_classifier("HBOS", HBOS(), validation_data, validation_labels)
-      evaluation_results.append(result)
-
-    elif eval_cat == "nn":
-      ## VAE ##
-      print("Training VAE...")
-      result = train_and_evaluate_classifier("VAE", VAE(encoder_neurons=layers, decoder_neurons=layers.reverse()), validation_data, validation_labels)
-      evaluation_results.append(result)
-
-      ## SO_GAAL ##
-      print("Training SO_GAAL...")
-      result = train_and_evaluate_classifier("SO_GAAL", SO_GAAL(lr_d=lr, stop_epochs=epochs), validation_data, validation_labels)
-      evaluation_results.append(result)
-
-      ## MO_GAAL ##
-      print("Training MO_GAAL...")
-      result = train_and_evaluate_classifier("MO_GAAL", MO_GAAL(lr_d=lr, stop_epochs=epochs), validation_data, validation_labels)
-      evaluation_results.append(result)
-
-    ## EVALUATE RESULTS ##
-    if eval_cat != "none":
-      print("Aggregated Results:")
-      print(tabulate(evaluation_results, ["ALGO", "TP", "TN", "FP", "FN", "TPR", "TNR", "PPV", "NPV", "TS", "PT", "ACC", "F1", "MCC"], tablefmt="grid"))
-
-    ## DATASET METRICS ##
-    len_training_data_points = len(training_data)
-    len_positive_validations = len(positive_validation_data)
-    len_negative_validations = len(negative_validation_data)
-    len_validations          = len_positive_validations + len_negative_validations
-
-    metrics_results = [
-      ["Training Data Points", len_training_data_points],
-      ["# Normal Points", len_positive_validations],
-      ["# Anomalies", len_negative_validations],
-      ["Contamination Percentage", math.floor((len_negative_validations / len_validations) * 100)]
-    ]
-
-    ## EVALUATE RESULTS ##
-    print(tabulate(metrics_results, ["Metric", "Value"], tablefmt="grid"))
-
-    if printout:
-      print("Saving results to %s" % (printout))
-      df = pd.DataFrame(evaluation_results)
-      df.to_csv(printout, header=None, index=False)
 
 if __name__ == '__main__':
   main()

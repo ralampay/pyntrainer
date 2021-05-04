@@ -30,7 +30,7 @@ class EvalCnn:
     self.lr         = params.get('lr')
     self.batch_size = params.get('batch_size')
 
-  def execute():
+  def execute(self):
     print("Initializing CNN autoencoder...")
 
     net = CnnAutoencoder(
