@@ -73,11 +73,13 @@ def main():
   scale         = args.scale
   will_reduce   = args.will_reduce
 
-  if torch.cuda.is_available():
-    dev = "cuda:0"
-    print("CUDA is available...")
-  else:
-    dev = "cpu"
+#  if torch.cuda.is_available():
+#    dev = "cuda:0"
+#    print("CUDA is available...")
+#  else:
+#    dev = "cpu"
+
+  dev = "cpu"
 
   device = torch.device(dev)
 
