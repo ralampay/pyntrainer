@@ -175,8 +175,8 @@ def main():
       'input_file':   input_file,
       'chunk_size':   chunk_size,
       'cf_file':      cf_file,
-      'cont':         cont,
-      'will_reduce':  will_reduce
+      'will_reduce':  will_reduce,
+      'neg_cont':     neg_cont
     }
 
     module = ModuleTrainClassify(params=params)
