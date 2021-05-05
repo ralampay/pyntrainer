@@ -62,7 +62,7 @@ class Eval:
 
     for i, chunk in enumerate(pd.read_csv(self.input_file, header=None, chunksize=self.chunk_size)):
       print("Reading chunk: %d" % (i+1))
-      print(chunk)
+      #print(chunk)
       data = data.append(chunk)
 
     input_dimensionality = len(data.columns) - 1
