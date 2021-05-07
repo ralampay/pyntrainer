@@ -171,9 +171,9 @@ class Eval:
       evaluation_results.append(result)
 
       ## LSCP ##
-      print("Training LSCP...")
-      result = train_and_evaluate_classifier("LSCP", LSCP([LOF(), LOF()]), validation_data, validation_labels)
-      evaluation_results.append(result)
+#      print("Training LSCP...")
+#      result = train_and_evaluate_classifier("LSCP", LSCP([LOF(), LOF()]), validation_data, validation_labels)
+#      evaluation_results.append(result)
     
     elif self.eval_cat == "proximity":
       ## LOCAL OUTLIER FACTOR ##
