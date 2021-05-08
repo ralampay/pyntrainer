@@ -51,8 +51,8 @@ class Eval:
     self.neg_cont   = params.get('neg_cont')
     self.eval_cat   = params.get('eval_cat')
 
-    # Parameters for output
-    self.printout = params.get('output')
+    # Parameters for output save file
+    self.printout = params.get('printout')
 
   def execute(self):
     evaluation_results = []
