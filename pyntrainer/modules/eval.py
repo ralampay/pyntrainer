@@ -145,9 +145,9 @@ class Eval:
 
     elif self.eval_cat == "prob":
       ## ABOD ##
-      print("Training ABOD...")
-      result = train_and_evaluate_classifier("ABOD", ABOD(), validation_data, validation_labels)
-      evaluation_results.append(result)
+      #print("Training ABOD...")
+      #result = train_and_evaluate_classifier("ABOD", ABOD(), validation_data, validation_labels)
+      #evaluation_results.append(result)
 
       ## SOS ##
       print("Training SOS...")
