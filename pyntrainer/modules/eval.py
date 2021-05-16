@@ -150,9 +150,9 @@ class Eval:
       #evaluation_results.append(result)
 
       ## SOS ##
-      print("Training SOS...")
-      result = train_and_evaluate_classifier("SOS", SOS(), validation_data, validation_labels)
-      evaluation_results.append(result)
+      #print("Training SOS...")
+      #result = train_and_evaluate_classifier("SOS", SOS(), validation_data, validation_labels)
+      #evaluation_results.append(result)
 
       ## COPOD ##
       print("Training COPOD...")
