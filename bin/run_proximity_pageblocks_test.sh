@@ -57,4 +57,4 @@ python -m pyntrainer --mode eval --input-file data/pageblocks.csv --layers 10 7 
 python -m pyntrainer --mode eval --input-file data/pageblocks.csv --layers 10 7 --eval-cat proximity --batch-size 5 --neg-cont 0.05 --printout ~/results/proximity/pageblocks-5-7.csv && \
 python -m pyntrainer --mode eval --input-file data/pageblocks.csv --layers 10 7 --eval-cat proximity --batch-size 5 --neg-cont 0.05 --printout ~/results/proximity/pageblocks-5-8.csv && \
 python -m pyntrainer --mode eval --input-file data/pageblocks.csv --layers 10 7 --eval-cat proximity --batch-size 5 --neg-cont 0.05 --printout ~/results/proximity/pageblocks-5-9.csv && \
-p
+python -m pyntrainer --mode eval --input-file data/pageblocks.csv --layers 10 7 --eval-cat proximity --batch-size 5 --neg-cont 0.05 --printout ~/results/proximity/pageblocks-5-10.csv && \
