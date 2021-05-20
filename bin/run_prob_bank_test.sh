@@ -1,7 +1,7 @@
 # Probabilistic (prob)
-python -m pyntrainer --mode eval --input-file data/bank.csv --layers 62 55 --eval-cat prob --batch-size 1000 --neg-cont 0.002 --printout ~/results/prob/bank-1-1.csv && \
-python -m pyntrainer --mode eval --input-file data/bank.csv --layers 62 55 --eval-cat prob --batch-size 1000 --neg-cont 0.002 --printout ~/results/prob/bank-1-2.csv && \
-python -m pyntrainer --mode eval --input-file data/bank.csv --layers 62 55 --eval-cat prob --batch-size 1000 --neg-cont 0.002 --printout ~/results/prob/bank-1-3.csv && \
+#python -m pyntrainer --mode eval --input-file data/bank.csv --layers 62 55 --eval-cat prob --batch-size 1000 --neg-cont 0.002 --printout ~/results/prob/bank-1-1.csv && \
+#python -m pyntrainer --mode eval --input-file data/bank.csv --layers 62 55 --eval-cat prob --batch-size 1000 --neg-cont 0.002 --printout ~/results/prob/bank-1-2.csv && \
+#python -m pyntrainer --mode eval --input-file data/bank.csv --layers 62 55 --eval-cat prob --batch-size 1000 --neg-cont 0.002 --printout ~/results/prob/bank-1-3.csv && \
 python -m pyntrainer --mode eval --input-file data/bank.csv --layers 62 55 --eval-cat prob --batch-size 1000 --neg-cont 0.002 --printout ~/results/prob/bank-1-4.csv && \
 python -m pyntrainer --mode eval --input-file data/bank.csv --layers 62 55 --eval-cat prob --batch-size 1000 --neg-cont 0.002 --printout ~/results/prob/bank-1-5.csv && \
 python -m pyntrainer --mode eval --input-file data/bank.csv --layers 62 55 --eval-cat prob --batch-size 1000 --neg-cont 0.002 --printout ~/results/prob/bank-1-6.csv && \
