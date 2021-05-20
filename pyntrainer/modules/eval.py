@@ -194,17 +194,17 @@ class Eval:
     elif self.eval_cat == "nn":
       ## VAE ##
       print("Training VAE...")
-      result = train_and_evaluate_classifier("VAE", VAE(encoder_neurons=layers, decoder_neurons=layers.reverse()), validation_data, validation_labels)
+      result = train_and_evaluate_classifier("VAE", VAE(encoder_neurons=self.layers, decoder_neurons=self.layers.reverse()), validation_data, validation_labels)
       evaluation_results.append(result)
 
       ## SO_GAAL ##
       print("Training SO_GAAL...")
-      result = train_and_evaluate_classifier("SO_GAAL", SO_GAAL(lr_d=lr, stop_epochs=epochs), validation_data, validation_labels)
+      result = train_and_evaluate_classifier("SO_GAAL", SO_GAAL(lr_d=self.lr, stop_epochs=self.epochs), validation_data, validation_labels)
       evaluation_results.append(result)
 
       ## MO_GAAL ##
       print("Training MO_GAAL...")
-      result = train_and_evaluate_classifier("MO_GAAL", MO_GAAL(lr_d=lr, stop_epochs=epochs), validation_data, validation_labels)
+      result = train_and_evaluate_classifier("MO_GAAL", MO_GAAL(lr_d=self.lr, stop_epochs=self.epochs), validation_data, validation_labels)
       evaluation_results.append(result)
 
     ## EVALUATE RESULTS ##
